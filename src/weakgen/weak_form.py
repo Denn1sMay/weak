@@ -1,9 +1,9 @@
 from typing import Optional
 import sympy
-from src.integral.util.boundaries.boundaries import Boundaries
-from src.preprocessing.preprocessing import parse_string_equation
-from src.integral.integral import Integral
-from src.util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
+from scripts.integral.util.boundaries.boundaries import Boundaries
+from scripts.preprocessing.preprocessing import parse_string_equation
+from scripts.integral.integral import Integral
+from util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
 
 class Weak_form:
     def __init__(self, trial_function_name: str, test_function_name: str, vector_trial_fuction_name: Optional[str] = None, vector_test_function_name: Optional[str] = None, equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[str] = None):

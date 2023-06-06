@@ -1,9 +1,9 @@
-from src.integral.integral import Integral
+from scripts.integral.integral import Integral
 import sympy
-from src.integral.util.dimensions.dimensions import Dimensions
-from src.integral.util.operators.operators import div, grad, rot
-from src.integral.util.boundaries.boundaries import Boundaries
-from src.weak_form import Weak_form
+from scripts.integral.util.dimensions.dimensions import Dimensions
+from scripts.integral.util.operators.operators import div, grad, rot
+from scripts.integral.util.boundaries.boundaries import Boundaries
+from weak_form import Weak_form
 from typing import Optional
 
 
