@@ -15,14 +15,11 @@ integral = Integral(ex, u, v)
 
 
 
-xxx = Weak_form(equation = None, trial_function_name="u", test_function_name="v", vector_trial_fuction_name="u_vec", vector_test_function_name="v_vec", string_equation="Laplacian(u) = f", boundary_condition=Boundaries.neumann, boundary_function="g")
+weak_form_object = Weak_form(equation = None, trial_function_name="u", test_function_name="v", vector_trial_fuction_name="u_vec", vector_test_function_name="v_vec", string_equation="m*Laplacian(u) = f") #, boundary_condition=Boundaries.neumann, boundary_function="g")
 
-xxx.multiply_with_test_function()
-xxx.integrate_over_domain()
-xxx.integraty_by_parts()
-print(xxx.equation)
-'''
-for term in xxx.lhs_terms:
-    print("Term:")
-    print(term.term)
-'''
+weak_form_object.multiply_with_test_function()
+weak_form_object.integrate_over_domain()
+weak_form_object.integraty_by_parts()
+weak_form_object.convert_to_ufl_string()
+print(weak_form_object.lhs_ufl_string)
+print(weak_form_object.rhs_ufl_string)

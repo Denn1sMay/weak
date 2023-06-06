@@ -8,7 +8,6 @@ def use_sympy_laplace_operator(sympy_term):
     new_term = sympy_term
     for lap_atom in lap_atoms:
         laplacian_args = lap_atom.args
-        print(type(laplacian_args[0]))
         lap_operator = Laplacian(laplacian_args[0])
         new_term = new_term.subs(lap_atom, lap_operator)
     return new_term
@@ -24,21 +23,15 @@ def parse_string_equation(string_equation: str):
     if len(equation_sides) == 2:
         lhs_parsed = sympy.parse_expr(equation_sides[0], local_dict=custom_dict, evaluate=False)
         rhs_parsed = sympy.parse_expr(equation_sides[1], local_dict=custom_dict, evaluate=False)
-        print("lhs:")
-        sympy.pprint(lhs_parsed)
-        print("rhs:")
-        sympy.pprint(rhs_parsed)
         lhs_with_operators = use_sympy_laplace_operator(lhs_parsed)
         rhs_with_operators = use_sympy_laplace_operator(rhs_parsed)
     else:
         lhs_parsed = sympy.parse_expr(equation_sides[0], local_dict=custom_dict, evaluate=False)
-        print("lhs:")
-        sympy.pprint(lhs_parsed)
         rhs_with_operators = sympy.parse_expr("0", evaluate=False)
         lhs_with_operators = use_sympy_laplace_operator(lhs_parsed)
 
     parsed_equation = sympy.Eq(lhs_with_operators, rhs_with_operators)
-    print("Result with sympy operators:")
+    print("Parsed sympy equation")
     sympy.pprint(parsed_equation)
     return parsed_equation
 
