@@ -1,8 +1,8 @@
 from typing import Optional
 import sympy
-from scripts.integral.util.boundaries.boundaries import Boundaries
-from scripts.preprocessing.preprocessing import parse_string_equation
-from scripts.integral.integral import Integral
+from .scripts.integral.util.boundaries.boundaries import Boundaries
+from .scripts.preprocessing.preprocessing import parse_string_equation
+from .scripts.integral.integral import Integral
 from util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
 
 class Weak_form:
