@@ -34,6 +34,7 @@ class Weak_form:
         else:
             self.test_vector = None
         self.make_sorted_terms()
+        self.assume_dimensions()
         self.verify_dimensions()
 
 
@@ -89,6 +90,29 @@ class Weak_form:
     def convert_to_ufl_string(self):
         self.lhs_ufl_string = execute_ufl_conversion(self.lhs_terms)
         self.rhs_ufl_string = execute_ufl_conversion(self.rhs_terms)
+
+    def assume_dimensions(self):
+        dimension = None
+        for term in self.lhs_terms + self.rhs_terms:
+            dimension = term.dim
+            if dimension != None:
+                break
+        if dimension == None:
+            raise Exception("Could not verify dimension of equation")
+        new_lhs_terns = []
+        for lhs_term in self.lhs_terms:
+            if lhs_term.dim == None:
+                lhs_term.dim = dimension
+            new_lhs_terns.append(lhs_term)
+        new_rhs_terns = []
+        for rhs_term in self.rhs_terms:
+            if rhs_term.dim == None:
+                rhs_term.dim = dimension
+            new_rhs_terns.append(rhs_term)
+        self.lhs_terms = new_lhs_terns
+        self.rhs_terms = new_rhs_terns
+            
+
 
 
     def verify_dimensions(self):

@@ -29,6 +29,8 @@ class Integral:
         elif self.dim == Dimensions.vector:
             # TODO need a vector valued test function here to create inner product of two vectors
             self.term = inner(self.term, self.test_vector)
+        else:
+            self.term = self.term * self.test
 
     def integrate_over_domain(self):
         self.term = sympy.Integral(self.term, domain)
