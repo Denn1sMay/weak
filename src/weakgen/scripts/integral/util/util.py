@@ -1,23 +1,44 @@
 
 import sympy
+from typing import Optional
 from .dimensions.dimensions import Dimensions
 from .operators.operators import div, grad, curl, inner
 from sympy.vector import Laplacian
 
+def verify_vector_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None):
+    first_function_args = function.args[0]
+    if trial != None and first_function_args.has(trial):
+        print("Dimension mismatch - expected vector but got skalar")
+        print("Incorrect term:")
+        sympy.pprint(function)
+        raise Exception("Dimension mismatch - expected vector valued trialfunction, but got skalar")
 
-def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, test_function_v: sympy.Symbol):
+
+def verify_skalar_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None):
+    first_function_args = function.args[0]
+    print("verify skalar value of ..........")
+    sympy.pprint(function)
+    if trial_vector != None and first_function_args.has(trial_vector):
+        print("Dimension mismatch - expected skalar but got vector")
+        print("Incorrect term:")
+        sympy.pprint(function)
+        raise Exception("Dimension mismatch - expected skalar valued trialfunction, but got vector")
+
+
+def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None):
     summand_dimension = None
-    if sympy_term.has(div):
+    if sympy_term.has(div) and not sympy_term.has(grad):
         # The expression is probably skalar valued
         # but if there are other differential operators in the term it could also be vector valued
         print("Summand contains a divergence -> skalar valued")
         print(sympy_term)
         summand_dimension = Dimensions.skalar
         div_atoms = sympy_term.atoms(div)
+        verify_vector_args(min(div_atoms), trial, trial_vector)
         if len(div_atoms) > 1:
             raise Exception("Multiple divergences found in one summand - not supported")
             
-    if sympy_term.has(grad):
+    if sympy_term.has(grad) and not sympy_term.has(div) and not sympy_term.has(inner):
         # The expression is probalby vector valued
         # but if contained with an inner product it becomes skalar valued
         # but if there is another gradient inside the gradient (or a vecotr), then is could be a matrix
@@ -29,6 +50,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, 
             print("Summand contains a gradient and inner function -> skalar valued")
             summand_dimension = Dimensions.skalar
         grad_atoms = sympy_term.atoms(grad)
+        verify_skalar_args(min(grad_atoms), trial, trial_vector)
         if len(grad_atoms) > 1 and not sympy_term.has(inner):
             raise Exception("Multiple gradients found in one summand - probabaly results in a matrix - which is not yet supported")
 
@@ -39,6 +61,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, 
         print(sympy_term)
         summand_dimension = Dimensions.vector
         curl_atoms = sympy_term.atoms(curl)
+        verify_vector_args(min(curl_atoms), trial, trial_vector)
         if len(curl_atoms) > 1:
             raise Exception("Multiple curls found in one summand - not supported")
         
@@ -49,6 +72,8 @@ def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, 
     if sympy_term.has(Laplacian):
         print("Summand contains Laplace -> skalar valued")
         summand_dimension = Dimensions.skalar
+        laplace_atoms = sympy_term.atoms(Laplacian)
+        verify_skalar_args(min(laplace_atoms), trial, trial_vector)
 
     if summand_dimension == None:
         print("No differential operator detected - should use default dimension")

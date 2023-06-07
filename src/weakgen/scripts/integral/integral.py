@@ -21,7 +21,7 @@ class Integral:
         self.trial_vector = trial_vector
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
-        self.dim = calculate_dimension(term, trial, test)
+        self.dim = calculate_dimension(term, trial, trial_vector)
 
     def multiply_with_test_function(self):
         if self.dim == Dimensions.skalar:

@@ -37,7 +37,6 @@ class Weak_form:
         self.assume_dimensions()
         self.verify_dimensions()
 
-
     def make_sorted_terms(self):
         '''
             sort the equation (trial function to lhs) and make arguments (Summands)
@@ -55,6 +54,7 @@ class Weak_form:
 
         self.lhs_terms = new_lhs_terms
         self.rhs_terms = new_rhs_terms
+
 
 
     def update_equation(self):
