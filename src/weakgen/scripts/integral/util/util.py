@@ -16,8 +16,6 @@ def verify_vector_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = Non
 
 def verify_skalar_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None):
     first_function_args = function.args[0]
-    print("verify skalar value of ..........")
-    sympy.pprint(function)
     if trial_vector != None and first_function_args.has(trial_vector):
         print("Dimension mismatch - expected skalar but got vector")
         print("Incorrect term:")
