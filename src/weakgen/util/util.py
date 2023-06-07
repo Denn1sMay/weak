@@ -1,7 +1,7 @@
 import sympy
 from typing import Optional, List
-from scripts.integral.integral import Integral
-from scripts.integral.util.boundaries.boundaries import Boundaries
+from ..scripts.integral.integral import Integral
+from ..scripts.integral.util.boundaries.boundaries import Boundaries
 from typing import Literal
 
 _side_types = ["lhs", "rhs"]

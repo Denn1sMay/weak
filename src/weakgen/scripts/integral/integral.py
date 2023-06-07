@@ -2,8 +2,8 @@ import sympy
 from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries
-from .util.operators.operators import div, grad, rot, inner
-from .util.util import calculate_dimension, get_differential_function
+from .util.operators.operators import div, grad, curl, inner
+from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace
 from typing import Optional
 
 
@@ -11,9 +11,8 @@ domain = sympy.Symbol("omega")
 surface = sympy.Symbol("surface")
 
 class Integral:
-
     def __init__(self, term: sympy.Expr, trial: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None):
-        self.term = term
+        self.term = replace_div_grad_with_laplace(term)
         self.trial = trial
         self.test = test
         self.boundary_condition = boundary_condition
@@ -49,9 +48,43 @@ class Integral:
         elif self.term.has(grad):
             self.check_linearity(grad)
             self.perform_integration_by_parts_on_gradient()
+        elif self.term.has(curl):
+            self.check_linearity(curl)
+            self.perform_integration_by_parts_on_curl()
         else:
             print("No differential operator present - skipping integration by parts")
             
+    def perform_integration_by_parts_on_curl(self):
+        integral = self.term
+        print("Performing integration by parts on curl integral")
+        sympy.pprint(integral)
+        # Get the curl function
+        integral_args = integral.args[0]
+        #TODO expression can contain multiple curl operators
+        curl_function, args_with_trial = get_differential_function(curl, integral_args)
+        # This expression will be replaced
+        curl_test_inner_product = inner(curl_function, self.test_vector)
+        print("curl_test_inner")
+        sympy.pprint(curl_test_inner_product)
+        # v must be vector valued
+        test_curl = curl(self.test_vector)
+        # This expression will be inserted
+        trial_curl_inner = inner(args_with_trial, test_curl)
+        integral_over_domain = integral_args.subs(curl_test_inner_product, trial_curl_inner)
+        integrated_parts = sympy.Integral(-integral_over_domain, domain)
+
+        if self.boundary_condition != None:
+            if self.boundary_condition == Boundaries.neumann and self.boundary_function == None:
+                raise Exception("Need to provide a boundary function symbol to use neumann boundaries")
+            if self.boundary_condition == Boundaries.neumann:
+                if(args_with_trial.has(curl)):
+                    raise Exception("Neumann boundaries for curl terms not yet implemented")
+                
+        print("Transformed Integral: ")
+        sympy.pprint(integrated_parts)
+        self.term = integrated_parts
+        return integrated_parts
+      
 
     def perform_integration_by_parts_on_diveregence(self):
         integral = self.term

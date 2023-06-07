@@ -1,10 +1,12 @@
 
 import sympy
 from .dimensions.dimensions import Dimensions
-from .operators.operators import div, grad, rot, inner
+from .operators.operators import div, grad, curl, inner
+from sympy.vector import Laplacian
+
 
 def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, test_function_v: sympy.Symbol):
-    summand_dimension = Dimensions.skalar
+    summand_dimension = None
     if sympy_term.has(div):
         # The expression is probably skalar valued
         # but if there are other differential operators in the term it could also be vector valued
@@ -14,11 +16,6 @@ def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, 
         div_atoms = sympy_term.atoms(div)
         if len(div_atoms) > 1:
             raise Exception("Multiple divergences found in one summand - not supported")
-        if sympy_term.has(grad):
-            if sympy_term.has(div(grad(trial_function_u))):
-                print("Divergence of gradient found in term -> equals laplace operator")
-            else:
-                raise Exception("div and grad found inside of term, but cannot be converted to laplace expression")
             
     if sympy_term.has(grad):
         # The expression is probalby vector valued
@@ -28,19 +25,33 @@ def calculate_dimension(sympy_term: sympy.Expr, trial_function_u: sympy.Symbol, 
         print("Summand contains a gradient -> vector valued")
         sympy.pprint(sympy_term)
         summand_dimension = Dimensions.vector
+        if sympy_term.has(inner):
+            print("Summand contains a gradient and inner function -> skalar valued")
+            summand_dimension = Dimensions.skalar
         grad_atoms = sympy_term.atoms(grad)
         if len(grad_atoms) > 1 and not sympy_term.has(inner):
             raise Exception("Multiple gradients found in one summand - probabaly results in a matrix - which is not yet supported")
 
-    if sympy_term.has(rot):
+    if sympy_term.has(curl):
         # the expression is probably vector valued
         # but if there are othr differential operators 
-        print("Summand contains a rotation -> vektor valued")
+        print("Summand contains a curl -> vektor valued")
         print(sympy_term)
         summand_dimension = Dimensions.vector
-        rot_atoms = sympy_term.atoms(rot)
-        if len(rot_atoms) > 1:
-            raise Exception("Multiple rotations found in one summand - not supported")
+        curl_atoms = sympy_term.atoms(curl)
+        if len(curl_atoms) > 1:
+            raise Exception("Multiple curls found in one summand - not supported")
+        
+    if sympy_term.has(div) and sympy_term.has(grad):
+        print("Summand contains div and grad -> Laplace -> skalar valued")
+        summand_dimension = Dimensions.skalar
+
+    if sympy_term.has(Laplacian):
+        print("Summand contains Laplace -> skalar valued")
+        summand_dimension = Dimensions.skalar
+
+    if summand_dimension == None:
+        print("No differential operator detected - should use default dimension")
     return summand_dimension
 
 
@@ -63,3 +74,20 @@ def get_differential_function(searched_function: sympy.Function, term: sympy.Exp
     function_args_with_trial = function_args[0]
     return first_function_atom, function_args_with_trial
     
+def replace_div_grad_with_laplace(term: sympy.Expr):
+    returned_term = term
+    if term.has(div):
+        div_functions = term.atoms(div)
+        div_function = min(div_functions)
+        div_args = div_function.args
+        first_div_arg = div_args[0]
+        if first_div_arg.has(grad):
+            grad_functions = first_div_arg.atoms(grad)
+            grad_function = min(grad_functions)
+            grad_args = grad_function.args
+            first_grad_arg = grad_args[0]
+            returned_term = term.subs(div_function, Laplacian(first_grad_arg))
+    return returned_term
+
+
+        
