@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import sympy
 from .scripts.integral.util.boundaries.boundaries import Boundaries
 from .scripts.preprocessing.preprocessing import parse_string_equation
@@ -6,35 +6,21 @@ from .scripts.integral.integral import Integral
 from .util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
 
 
+
 class Weak_form:
-    def __init__(self, trial_function_name: str, test_function_name: str, vector_trial_fuction_name: Optional[str] = None, vector_test_function_name: Optional[str] = None, equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
-        self.trial = sympy.Symbol(trial_function_name)
-        self.test = sympy.Symbol(test_function_name)
+    def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
+
+        self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else None
+        self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else None
+        self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else None
+        self.test_vector = [sympy.Symbol(vte) for vte in vector_test_function_names] if vector_test_function_names != None else None
+        self.boundary_func = sympy.Symbol(boundary_function) if boundary_function != None else None
+        self.surface = sympy.Symbol("surface") if boundary_function != None else None
+        self.equation = parse_string_equation(string_equation) if string_equation != None else sympy_equation
         self.boundary = boundary_condition
         self.debug = debug
         self.lhs_terms = []
         self.rhs_terms = []
-
-        if string_equation != None:
-            self.equation = parse_string_equation(string_equation)
-        else:
-            self.equation = equation
-
-        if boundary_function != None:
-            self.boundary_func = sympy.Symbol(boundary_function)
-            self.surface = sympy.Symbol("surface")
-        else:
-            self.boundary_func = None
-
-        if vector_trial_fuction_name != None:
-            self.trial_vector = sympy.Symbol(vector_trial_fuction_name)
-        else:
-            self.trial_vector = None
-
-        if vector_test_function_name != None:
-            self.test_vector = sympy.Symbol(vector_test_function_name)
-        else:
-            self.test_vector = None
 
         self.make_sorted_terms()
         self.assume_dimensions()
@@ -46,8 +32,11 @@ class Weak_form:
         self.integrate_over_domain()
         self.integraty_by_parts()
         self.convert_to_ufl_string()
+        self.debug_print("Weak Form Solution:", "heading")
+        self.debug_print("", "sympyPprint")
         print("UFL formatted weak form:")
         print(str(self.lhs_ufl_string) + " = " + str(self.rhs_ufl_string))
+        return self.lhs_ufl_string, self.rhs_ufl_string
 
     def make_sorted_terms(self):
         '''
@@ -150,6 +139,8 @@ class Weak_form:
 
 
     def verify_dimensions(self):
+        if len(self.lhs_terms) == 0:
+            raise Exception("Could not find term with trial function in provided equation")
         first_term = self.lhs_terms[0]
         for term in self.lhs_terms + self.rhs_terms:
             if term.dim != None and term.dim != first_term.dim:

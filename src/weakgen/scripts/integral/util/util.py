@@ -1,6 +1,6 @@
 
 import sympy
-from typing import Optional
+from typing import Optional, List
 from .dimensions.dimensions import Dimensions
 from .operators.operators import div, grad, curl, inner
 from sympy.vector import Laplacian
@@ -20,33 +20,33 @@ def debug_print(debug: bool, message: str, term: Optional[sympy.Expr] = "unknown
             print("[" + str(term) + "]: " + message)
             
 
-def verify_vector_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None):
+def verify_vector_args(function: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None):
     first_function_args = function.args[0]
-    if (trial != None and first_function_args.has(trial)) or (test != None and first_function_args.has(test)):
+    if (trial != None and first_function_args.has(*trial)) or (test != None and first_function_args.has(*test)):
         print("Dimension mismatch - expected vector but got skalar")
         print("Incorrect term:")
         sympy.pprint(function)
         raise Exception("Dimension mismatch - expected vector valued trialfunction, but got skalar")
-    if trial_vector == None:
-        raise Exception("No vector valued trial function provided")
+    if trial_vector == None and test_vector == None:
+        raise Exception("No vector valued function provided")
 
 
-def verify_skalar_args(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None):
+def verify_skalar_args(function: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None):
     first_function_args = function.args[0]
-    if (trial_vector != None and first_function_args.has(trial_vector)) or (test_vector != None and first_function_args.has(test_vector)):
+    if (trial_vector != None and first_function_args.has(*trial_vector)) or (test_vector != None and first_function_args.has(*test_vector)):
         print("Dimension mismatch - expected skalar but got vector")
         print("Incorrect term:")
         sympy.pprint(function)
         raise Exception("Dimension mismatch - expected skalar valued trialfunction, but got vector")
-    if trial == None:
+    if trial == None and test == None:
         raise Exception("No skalar valued trial function provided")
 
-def verify_differential_term_has_trial_or_test(function: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None):
+def verify_differential_term_has_trial_or_test(function: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None):
     first_function_args = function.args[0]
-    if not first_function_args.has(trial) and not first_function_args.has(trial_vector) and not first_function_args.has(test) and not first_function_args.has(test_vector):
+    if (trial != None and not first_function_args.has(*trial)) and (trial_vector != None and not first_function_args.has(*trial_vector)) and (test != None and not first_function_args.has(*test)) and (test_vector != None and not first_function_args.has(*test_vector)):
         print("The Expression '" + str(first_function_args) + "' does not contain a trial or test function. Applying differential Operators to this argument will result in 0")
 
-def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None, debug: Optional[bool] = True):
+def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, debug: Optional[bool] = True):
     summand_dimension = None
 
     if sympy_term.has(div) and not sympy_term.has(grad) and not sympy_term.has(inner) and not sympy_term.has(Laplacian):
@@ -111,14 +111,22 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[sympy.Symbol] = 
         laplacian_atoms = sympy_term.atoms(Laplacian)
         laplacian_atom = min(laplacian_atoms)
         laplacian_arg = laplacian_atom.args[0]
-        if trial != None and laplacian_arg.has(trial):
+        if trial != None and laplacian_arg.has(*trial):
             debug_print(debug, "Summand contains Laplacian(u_skalar) -> skalar valued:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.skalar
-        elif trial_vector != None and laplacian_arg.has(trial_vector):
+        elif trial_vector != None and laplacian_arg.has(*trial_vector):
             debug_print(debug, "Summand contains Laplacian(u_vector) -> vector valued:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.vector
         else:
             raise Exception("Laplacian must contain a trial function")
+        
+    if not sympy_term.has(Laplacian) and not sympy_term.has(div) and not sympy_term.has(grad)  and not sympy_term.has(curl):
+        if (test != None and sympy_term.has(trial)) or (test != None and sympy_term.has(test)):
+            debug_print(debug, "Summand contains no differential operator -> default skalar dimension:", sympy_term, "sympyPprint")
+            summand_dimension = Dimensions.skalar
+        elif (trial_vector != None and sympy_term.has(trial_vector)) or (test_vector != None and sympy_term.has(test_vector)):
+            debug_print(debug, "Summand contains no differential operator -> default vector dimension:", sympy_term, "sympyPprint")
+            summand_dimension = Dimensions.vector
 
     if summand_dimension == None:
         debug_print(debug, "No differential operator detected - will assume dimension:", sympy_term, "sympyPprint")
@@ -161,4 +169,18 @@ def replace_div_grad_with_laplace(term: sympy.Expr):
     return returned_term
 
 
-        
+def get_corresponding_test_function(term: sympy.Expr, test: List[sympy.Symbol], trials: Optional[List[sympy.Symbol]] = None):
+    if trials == None:
+        # No Trial function present - will return the first Test Function in the list
+        return test[0]
+    
+    corresponding_function = None
+    for index, trial in enumerate(trials):
+        # Will immediately return after first trial function is found (Multiple Trial Functions in term?)
+        if term.has(trial):
+            corresponding_function = test[index]
+    return corresponding_function if corresponding_function != None else test[0]
+
+
+    
+    

@@ -3,22 +3,22 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace, debug_print
-from typing import Optional
+from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function
+from typing import Optional, List
 
 
 domain = sympy.Symbol("omega")
 surface = sympy.Symbol("surface")
 
 class Integral:
-    def __init__(self, term: sympy.Expr, trial: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None, debug: Optional[bool] = False):
+    def __init__(self, term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None, debug: Optional[bool] = False):
         replaced_term = replace_div_grad_with_laplace(term)
         self.term = replaced_term
         self.trial = trial
-        self.test = test
+        self.test = get_corresponding_test_function(term, test, trial) if test != None else test
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
-        self.test_vector = test_vector
+        self.test_vector = get_corresponding_test_function(term, test_vector, trial_vector) if test_vector != None else test_vector
         self.trial_vector = trial_vector
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
@@ -26,11 +26,15 @@ class Integral:
         self.dim = calculate_dimension(replaced_term, trial, trial_vector, test, test_vector, debug)
 
 
+
     def multiply_with_test_function(self):
         if self.dim == Dimensions.skalar:
+            if self.test == None:
+                raise Exception("Need to provide string literal for skalar valued test function in order to create inner product")
             self.term = self.term * self.test
         elif self.dim == Dimensions.vector:
-            # TODO need a vector valued test function here to create inner product of two vectors
+            if self.test_vector == None:
+                raise Exception("Need to provide string literal for vector valued test function in order to create inner product")
             self.term = inner(self.term, self.test_vector)
         else:
             self.term = self.term * self.test
@@ -68,8 +72,6 @@ class Integral:
         curl_function, args_with_trial = get_differential_function(curl, integral_args)
         # This expression will be replaced
         curl_test_inner_product = inner(curl_function, self.test_vector)
-        debug_print(self.debug, "curl_test_inner", self.term)
-        sympy.pprint(curl_test_inner_product)
         # v must be vector valued
         test_curl = curl(self.test_vector)
         # This expression will be inserted
@@ -130,7 +132,6 @@ class Integral:
         gradient_function, args_with_trial = get_differential_function(grad, integral_args)
         # This expression will be replaced
         grad_test_inner_product = inner(gradient_function, self.test_vector)
-        sympy.pprint(grad_test_inner_product)
         # v must be vector valued
         test_divergence = div(self.test_vector)
         # This expression will be inserted
@@ -159,8 +160,9 @@ class Integral:
         laplacian_function, args_with_trial = get_differential_function(Laplacian, integral_args)
         # Define the gradient of the trial function (argument of the laplace function) -> will be vector valued or skalar valued, depending on the use of u or u_vec as Laplacian argument
         trial_gradient = grad(args_with_trial)
-
         integrated_parts = None
+        if self.dim != Dimensions.skalar and self.dim != Dimensions.vector:
+            raise Exception("Cannot perform integration by parts on laplacian function - dimension unknown")
         if self.dim == Dimensions.vector:
             # Function look like: inner(Laplacian(u_vec), v-vec) -> Laplacian(u_vec) results in Vector
             test_gradient = grad(self.test_vector)
