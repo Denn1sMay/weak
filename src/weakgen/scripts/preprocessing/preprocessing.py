@@ -25,7 +25,7 @@ def expand_with_operators(expression: sympy.Expr):
                 as_single_operators = [operator(summand) for summand in operator_summands]
                 as_addition = sympy.Add(*as_single_operators)
                 expanded_expr = expanded_expr.subs(operator_atom, as_addition)
-    return expanded_expr
+    return expanded_expr.expand()
     
 
 def parse_string_equation(string_equation: str):
