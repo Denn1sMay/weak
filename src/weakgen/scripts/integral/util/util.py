@@ -121,10 +121,10 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbo
             raise Exception("Laplacian must contain a trial function")
         
     if not sympy_term.has(Laplacian) and not sympy_term.has(div) and not sympy_term.has(grad)  and not sympy_term.has(curl):
-        if (test != None and sympy_term.has(trial)) or (test != None and sympy_term.has(test)):
+        if (test != None and sympy_term.has(*trial)) or (test != None and sympy_term.has(*test)):
             debug_print(debug, "Summand contains no differential operator -> default skalar dimension:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.skalar
-        elif (trial_vector != None and sympy_term.has(trial_vector)) or (test_vector != None and sympy_term.has(test_vector)):
+        elif (trial_vector != None and sympy_term.has(*trial_vector)) or (test_vector != None and sympy_term.has(*test_vector)):
             debug_print(debug, "Summand contains no differential operator -> default vector dimension:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.vector
 
