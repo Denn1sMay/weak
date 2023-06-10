@@ -14,6 +14,7 @@ def use_sympy_laplace_operator(sympy_term):
 
 
 def parse_string_equation(string_equation: str):
+    print("Input Equation:")
     print(string_equation)
     custom_dict = {"div": div}
     equation_sides = string_equation.split("=")
@@ -33,5 +34,6 @@ def parse_string_equation(string_equation: str):
     parsed_equation = sympy.Eq(lhs_with_operators, rhs_with_operators)
     print("Parsed sympy equation")
     sympy.pprint(parsed_equation)
+    print("")
     return parsed_equation
 

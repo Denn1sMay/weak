@@ -3,7 +3,7 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace
+from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace, debug_print
 from typing import Optional
 
 
@@ -11,8 +11,9 @@ domain = sympy.Symbol("omega")
 surface = sympy.Symbol("surface")
 
 class Integral:
-    def __init__(self, term: sympy.Expr, trial: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None):
-        self.term = replace_div_grad_with_laplace(term)
+    def __init__(self, term: sympy.Expr, trial: Optional[sympy.Symbol] = None, test: Optional[sympy.Symbol] = None, trial_vector: Optional[sympy.Symbol] = None, test_vector: Optional[sympy.Symbol] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None, debug: Optional[bool] = False):
+        replaced_term = replace_div_grad_with_laplace(term)
+        self.term = replaced_term
         self.trial = trial
         self.test = test
         self.boundary_condition = boundary_condition
@@ -21,7 +22,9 @@ class Integral:
         self.trial_vector = trial_vector
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
-        self.dim = calculate_dimension(term, trial, trial_vector)
+        self.debug = debug
+        self.dim = calculate_dimension(replaced_term, trial, trial_vector, test, test_vector, debug)
+
 
     def multiply_with_test_function(self):
         if self.dim == Dimensions.skalar:
@@ -39,7 +42,7 @@ class Integral:
     Integration by Parts
     '''
     def integrate_by_parts(self):
-        if self.term.has(div):
+        if self.term.has(div) and not self.term.has(grad):
             self.check_linearity(div)
             if self.term.has(Laplacian):
                 raise Exception("Divergence and Laplace cannot be combined")
@@ -47,26 +50,25 @@ class Integral:
         elif self.term.has(Laplacian):
             self.check_linearity(Laplacian)
             self.perform_integration_by_parts_on_laplacian()
-        elif self.term.has(grad):
+        elif self.term.has(grad) and not self.term.has(div):
             self.check_linearity(grad)
             self.perform_integration_by_parts_on_gradient()
         elif self.term.has(curl):
             self.check_linearity(curl)
             self.perform_integration_by_parts_on_curl()
         else:
-            print("No differential operator present - skipping integration by parts")
+            debug_print(self.debug, "No differential operator present - skipping integration by parts", self.term)
             
     def perform_integration_by_parts_on_curl(self):
         integral = self.term
-        print("Performing integration by parts on curl integral")
-        sympy.pprint(integral)
+        debug_print(self.debug, "Performing integration by parts on curl integral", self.term, "heading")
         # Get the curl function
         integral_args = integral.args[0]
         #TODO expression can contain multiple curl operators
         curl_function, args_with_trial = get_differential_function(curl, integral_args)
         # This expression will be replaced
         curl_test_inner_product = inner(curl_function, self.test_vector)
-        print("curl_test_inner")
+        debug_print(self.debug, "curl_test_inner", self.term)
         sympy.pprint(curl_test_inner_product)
         # v must be vector valued
         test_curl = curl(self.test_vector)
@@ -81,17 +83,15 @@ class Integral:
             if self.boundary_condition == Boundaries.neumann:
                 if(args_with_trial.has(curl)):
                     raise Exception("Neumann boundaries for curl terms not yet implemented")
-                
-        print("Transformed Integral: ")
-        sympy.pprint(integrated_parts)
+        
         self.term = integrated_parts
+        debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
         return integrated_parts
       
 
     def perform_integration_by_parts_on_diveregence(self):
         integral = self.term
-        print("Performing integration by parts on divergence integral")
-        sympy.pprint(integral)
+        debug_print(self.debug, "Performing integration by parts on divergence integral", self.term, "heading")
         integral_args = integral.args[0]
         divergence_function, args_with_trial = get_differential_function(div, integral_args)
         test_gradient = grad(self.test)
@@ -113,26 +113,23 @@ class Integral:
                     integral_over_boundary = integral_args.subs(div_test_mult, (boundary_and_residual * self.test))
                     integrated_parts = integrated_parts + sympy.Integral(integral_over_boundary, surface)
                 else:
-                    print("Vector Function spaces are not implemented yet")
-                    print("Cannot Add Neumann boundary")
+                    debug_print(True, "Vector Function spaces are not implemented yet", self.term)
+                    debug_print(True, "Cannot Add Neumann boundary", self.term)
                     raise Exception("Neumann Boundaries for vector valued trial functions are not implemented yet")
-        print("Transformed Integral: ")
-        sympy.pprint(integrated_parts)
         self.term = integrated_parts
+        debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
         return integrated_parts
             
 
     def perform_integration_by_parts_on_gradient(self):
         integral = self.term
-        print("Performing integration by parts on gradient integral")
-        sympy.pprint(integral)
+        debug_print(self.debug, "Performing integration by parts on gradient integral", self.term, "heading")
         # Get the integrated function
         integral_args = integral.args[0]
         #TODO expression can contain multiple gradient operators
         gradient_function, args_with_trial = get_differential_function(grad, integral_args)
         # This expression will be replaced
         grad_test_inner_product = inner(gradient_function, self.test_vector)
-        print("grad_test_inner")
         sympy.pprint(grad_test_inner_product)
         # v must be vector valued
         test_divergence = div(self.test_vector)
@@ -148,31 +145,40 @@ class Integral:
                 if(args_with_trial.has(grad)):
                     raise Exception("Neumann boundaries for gradient terms not yet implemented")
                 
-        print("Transformed Integral: ")
-        sympy.pprint(integrated_parts)
         self.term = integrated_parts
+        debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
         return integrated_parts
 
 
     def perform_integration_by_parts_on_laplacian(self):
         sympy.Add.precedence_traditional = True
         integral = self.term
-        print("Performing integration by parts on laplace integral")
-        sympy.pprint(integral)
+        debug_print(self.debug, "Performing integration by parts on laplace integral", self.term, "heading")
         # Get the integrated function
         integral_args = integral.args[0]
-        #TODO argument of laplace operator can be a complex expression
         laplacian_function, args_with_trial = get_differential_function(Laplacian, integral_args)
-        # Define the gradient of the trial function (argument of the laplace function)
+        # Define the gradient of the trial function (argument of the laplace function) -> will be vector valued or skalar valued, depending on the use of u or u_vec as Laplacian argument
         trial_gradient = grad(args_with_trial)
-        # Define the nabla operator on the test function
-        test_gradient = grad(self.test)
-        # Perform the integration by parts 
-        #  -> replace the multiplication of laplace(u) * v
-        laplacian_test_mult = laplacian_function * self.test
-        inner_func = inner(trial_gradient, test_gradient)
-        integral_over_domain = integral_args.subs(laplacian_test_mult, inner_func)
-        integrated_parts = sympy.Integral(-integral_over_domain, domain)
+
+        integrated_parts = None
+        if self.dim == Dimensions.vector:
+            # Function look like: inner(Laplacian(u_vec), v-vec) -> Laplacian(u_vec) results in Vector
+            test_gradient = grad(self.test_vector)
+            #  replace the inner product of inner(Laplacian(u_vec), v_vec)
+            laplacian_test_inner = inner(laplacian_function, self.test_vector)
+            inner_func = inner(trial_gradient, test_gradient)
+            integral_over_domain = integral_args.subs(laplacian_test_inner, inner_func)
+            integrated_parts = sympy.Integral(-integral_over_domain, domain)
+
+        if self.dim == Dimensions.skalar:
+            # Function look like: Laplacian(u) * v -> Laplacian(u) results in skalar
+            test_gradient = grad(self.test)
+            #  replace the multiplication of laplace(u) * v
+            laplacian_test_mult = laplacian_function * self.test
+            inner_func = inner(trial_gradient, test_gradient)
+            integral_over_domain = integral_args.subs(laplacian_test_mult, inner_func)
+            integrated_parts = sympy.Integral(-integral_over_domain, domain)
+
         if self.boundary_condition != None:
             if self.boundary_condition == Boundaries.neumann and self.boundary_function == None:
                 raise Exception("Need to provide a boundary function symbol to use neumann boundaries")
@@ -180,9 +186,9 @@ class Integral:
                 boundary_and_residual = args_with_trial.subs(self.trial, self.boundary_function)
                 integral_over_boundary = integral_args.subs(laplacian_test_mult, (boundary_and_residual * self.test))
                 integrated_parts = integrated_parts + sympy.Integral(integral_over_boundary, surface)
-        print("Transformed Integral: ")
-        sympy.pprint(integrated_parts)
+
         self.term = integrated_parts
+        debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
         return integrated_parts
 
     '''
@@ -197,6 +203,8 @@ class Integral:
         integral_domain = integral_atom.args[1][0]
         replaced_as_string = str(term_without_integral)
         # Every part of the term will be put inside the integral here. Should be mathematically correct, as it can only be a factor in front of the integral, which will be pulled in
+        if integral_args == 0:
+            return "0"
         if integral_domain == domain:
             string_as_integral_string = "(" + replaced_as_string + ") * dx"
         elif integral_domain == surface:
@@ -213,5 +221,5 @@ class Integral:
             for exponential_arg in exponential:
                 diff_operator_in_exponential = exponential_arg.atoms(checkFunction)
                 if len(diff_operator_in_exponential) > 0:
-                    print("Exponent in differential Operator - not implemented")
+                    debug_print(True, "Exponent in differential Operator - not implemented", self.term)
                     raise Exception("Exponent in differential operators are not allowed")
