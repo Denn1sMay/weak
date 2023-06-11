@@ -19,7 +19,7 @@ class Weak_form:
         
         weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
         weak_form_lhs_string, weak_form_rhs_string = weak_form_object.solve()
-        
+        # Result: (-inner(grad(u), grad(v))) * dx = (f*v) * dx
         a_as_dolfin_expr = eval(weak_form_lhs_string)
         L_as_dolfin_expr = eval(weak_form_rhs_string)
         ```
