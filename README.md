@@ -19,12 +19,15 @@ from ufl import inner, grad, div, curl, div, ds, dx
 
 weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
 weak_form_lhs_string, weak_form_rhs_string = weak_form_object.solve()
-# Result: (-inner(grad(u), grad(v))) * dx = (f*v) * dx
+# Result:
+# weak_form_lhs_string: (-inner(grad(u), grad(v))) * dx
+# weak_form_rhs_string: (f*v) * dx
 a_as_dolfin_expr = eval(weak_form_lhs_string)
 l_as_dolfin_expr = eval(weak_form_rhs_string)
 ```
 
 To use the package, you need to import the necessary UFL operators (inner, grad, div, curl, ds, dx) as shown in the example. This allows the eval() function to map the string functions to the corresponding UFL implementation.
+___
 
 ### Input
 To use the package, provide the strong form of the equation as a string to the `equation_string` parameter. The equation can be scalar- or vector-valued, as it will be converted to a scalar weak form.
