@@ -14,10 +14,12 @@ class Weak_form:
 
         ```
         from ufl import inner, grad, div, curl, div, ds, dx
+        
         weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
-        a_generated_string, L_generated_string = weak_form_object.solve()
-        a_as_dolfin_expr = eval(a_generated_string)
-        L_as_dolfin_expr = eval(L_generated_string)
+        weak_form_lhs_string, weak_form_rhs_string = weak_form_object.solve()
+        
+        a_as_dolfin_expr = eval(weak_form_lhs_string)
+        L_as_dolfin_expr = eval(weak_form_rhs_string)
         ```
 
         The ufl operators have to be imported as in the example. Otherwise the eval() function wont be able to map the string functions to the ufl-implementation of the functions.
@@ -30,27 +32,24 @@ class Weak_form:
         - curl (take the curl of an exression)
 
         ### Applicable Boundary Conditions
-        Pass a condition to the `boundary_condition` parameter. If you specify a neumann Boundary Condition, a string literal for `boundary_function` has to be provided. Availabe options are:
-        - Boundaries.dirichlet (default, surface integrals will vanish)
-        - Boundaries.neumann (requires *boundary_function*, Apply neumann boundary condition)
-
+        You can specify a boundary condition by passing a condition to the `boundary_condition` parameter. If you need a Neumann boundary condition, you must provide a string literal for the `boundary_function` parameter. The available options are:
+        - Boundaries.dirichlet (default): Surface integrals will vanish.
+        - Boundaries.neumann: Requires the `boundary_function` parameter. Applies a Neumann boundary condition.
+       
         ### Input
-        Provide the strong form of the equation to `equation_string`. This equation can be skalar- or vector valued, it will be converted to a skalar weak form. 
-        The included trial function(s) have to be provided as a list of string literals to `trial_function_names` or `vector_trial_function_names`, according to their dimension.
-        You also have to provide the string literals of the test function(s) defined in your programs scope to `test_function_names` or `vector_test_function_names`, depending on the dimension of your equation.
-        If you have troube converting the equation, set the parameter `debug=True` to get hints on where the conversion failed.
+        To use the package, provide the strong form of the equation as a string to the `equation_string` parameter. The equation can be scalar- or vector-valued, as it will be converted to a scalar weak form.
+        You also need to provide the string literals of the trial function(s) in a list to the `trial_function_names` or `vector_trial_function_names` parameter, depending on their dimension. Similarly, provide the string literals of the test function(s) defined in your program's scope to the `test_function_names` or `vector_test_function_names` parameter, based on the dimension of your equation.
+        If you encounter any difficulties during the conversion process, you can set the `debug=True` parameter to receive hints on where the conversion failed.
 
         ### What does it do
-        The Weak_form class will try to parse your string equation into a sympy equation and create separate terms out  of it.
-        When calling `solve()` on the returned object, these steps will be executed:
+        The Weak Form Equation Generator attempts to parse your string equation into a sympy equation and separate its terms. When you call solve() on the returned object, the following steps will be executed:
 
-        1. Multiply with test function
-        2. Integrate over domain
-        3. Integrate by parts (applied on terms containing differential operators)
-        4. Convert the equation to a ufl-syntaxed string
+        1. Multiply the equation with the test function.
+        2. Integrate the equation over the domain.
+        3. Apply integration by parts to terms containing differential operators.
+        4. Convert the equation to a UFL-syntaxed string.
 
-        The returned 
-
+        The two resulting string values represent the left-hand side (LHS) and the right-hand side (RHS) of the weak form equation. You can use the built-in eval() function in Python to parse the string equation into the variables present in your program's scope.
 
         '''
         self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else None
