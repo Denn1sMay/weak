@@ -14,6 +14,7 @@ class Weak_form:
         ## Example Usage
 
         ```
+        from weakgen import Weak_form
         from ufl import inner, grad, div, curl, div, ds, dx
         
         weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
