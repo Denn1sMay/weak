@@ -10,6 +10,7 @@ from .util.util import execute_test_multiplications, execute_integration, execut
 class Weak_form:
     def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = Boundaries.dirichlet, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
         '''
+        See [GitHub](https://github.com/Denn1sMay/weak) for further Details 
         ## Example Usage
 
         ```

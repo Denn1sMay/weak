@@ -20,7 +20,7 @@ weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v
 weak_form_lhs_string, weak_form_rhs_string = weak_form_object.solve()
 
 a_as_dolfin_expr = eval(weak_form_lhs_string)
-L_as_dolfin_expr = eval(weak_form_rhs_string)
+l_as_dolfin_expr = eval(weak_form_rhs_string)
 ```
 
 To use the package, you need to import the necessary UFL operators (inner, grad, div, curl, ds, dx) as shown in the example. This allows the eval() function to map the string functions to the corresponding UFL implementation.
