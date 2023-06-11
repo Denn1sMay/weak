@@ -8,8 +8,51 @@ from .util.util import execute_test_multiplications, execute_integration, execut
 
 
 class Weak_form:
-    def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
+    def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, boundary_condition: Optional[Boundaries] = Boundaries.dirichlet, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
+        '''
+        ## Example Usage
 
+        ```
+        from ufl import inner, grad, div, curl, div, ds, dx
+        weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
+        a_generated_string, L_generated_string = weak_form_object.solve()
+        a_as_dolfin_expr = eval(a_generated_string)
+        L_as_dolfin_expr = eval(L_generated_string)
+        ```
+
+        The ufl operators have to be imported as in the example. Otherwise the eval() function wont be able to map the string functions to the ufl-implementation of the functions.
+
+
+        ### Accessible differential operators
+        - Laplacian (take the laplacian of an expression)
+        - grad (take the gradient of an expression)
+        - div (take the divergence of an expression)
+        - curl (take the curl of an exression)
+
+        ### Applicable Boundary Conditions
+        Pass a condition to the `boundary_condition` parameter. If you specify a neumann Boundary Condition, a string literal for `boundary_function` has to be provided. Availabe options are:
+        - Boundaries.dirichlet (default, surface integrals will vanish)
+        - Boundaries.neumann (requires *boundary_function*, Apply neumann boundary condition)
+
+        ### Input
+        Provide the strong form of the equation to `equation_string`. This equation can be skalar- or vector valued, it will be converted to a skalar weak form. 
+        The included trial function(s) have to be provided as a list of string literals to `trial_function_names` or `vector_trial_function_names`, according to their dimension.
+        You also have to provide the string literals of the test function(s) defined in your programs scope to `test_function_names` or `vector_test_function_names`, depending on the dimension of your equation.
+        If you have troube converting the equation, set the parameter `debug=True` to get hints on where the conversion failed.
+
+        ### What does it do
+        The Weak_form class will try to parse your string equation into a sympy equation and create separate terms out  of it.
+        When calling `solve()` on the returned object, these steps will be executed:
+
+        1. Multiply with test function
+        2. Integrate over domain
+        3. Integrate by parts (applied on terms containing differential operators)
+        4. Convert the equation to a ufl-syntaxed string
+
+        The returned 
+
+
+        '''
         self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else None
         self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else None
         self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else None

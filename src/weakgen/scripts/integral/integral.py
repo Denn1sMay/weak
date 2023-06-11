@@ -211,6 +211,8 @@ class Integral:
             string_as_integral_string = "(" + replaced_as_string + ") * dx"
         elif integral_domain == surface:
             string_as_integral_string = "(" + replaced_as_string + ") * ds"
+        else: 
+            string_as_integral_string = replaced_as_string
         self.ufl_string = string_as_integral_string
         return string_as_integral_string
 
