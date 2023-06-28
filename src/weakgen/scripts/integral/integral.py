@@ -3,7 +3,7 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import calculate_dimension, get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function
+from .util.util import get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function, get_dimension_type
 from typing import Optional, List
 
 
@@ -11,7 +11,7 @@ domain = sympy.Symbol("omega")
 surface = sympy.Symbol("surface")
 
 class Integral:
-    def __init__(self, term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None, debug: Optional[bool] = False):
+    def __init__(self, term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, variables: Optional[List[sympy.Symbol]] = [], variable_vectors: Optional[List[sympy.Symbol]] = [], boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[sympy.Symbol] = None, debug: Optional[bool] = False):
         replaced_term = replace_div_grad_with_laplace(term)
         self.term = replaced_term
         self.trial = trial
@@ -20,10 +20,12 @@ class Integral:
         self.boundary_function = boundary_function
         self.test_vector = get_corresponding_test_function(term, test_vector, trial_vector) if test_vector != None else test_vector
         self.trial_vector = trial_vector
+        self.variables = variables
+        self.variable_vectors = variable_vectors
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
         self.debug = debug
-        self.dim = calculate_dimension(replaced_term, trial, trial_vector, test, test_vector, debug)
+        self.dim = get_dimension_type(replaced_term, trial, trial_vector, test, test_vector, variables, variable_vectors, debug=debug)
 
 
 

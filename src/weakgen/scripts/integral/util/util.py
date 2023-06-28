@@ -5,7 +5,18 @@ from .dimensions.dimensions import Dimensions
 from .operators.operators import div, grad, curl, inner
 from sympy.vector import Laplacian
 
-
+def debug_print(debug: bool, message: str, term: Optional[sympy.Expr] = "unknown", format: Optional[str] = "default"):
+    if debug == True:
+        if format == "heading":
+            print(".........." + str(message) + "..........")
+            sympy.pprint(term)
+        if format == "sympyPprint":
+            print(str(message))
+            sympy.pprint(term)
+            print(" ")
+        if format == "default":
+            print("[" + str(term) + "]: " + str(message))
+   
 
 def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", productId: Optional[int] = 0):
     if expression.func == sympy.Mul:
@@ -44,73 +55,109 @@ def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", pr
 Will apply rules on how the dimensions are shifted by using nabla operator.
 The 'expand()' operator is used on the expression -> only summands should be present in typed_expressions
 '''
-def get_dimension(expression: sympy.Expr, trial: Optional[List[sympy.Symbol]] = [], trial_vector: Optional[List[sympy.Symbol]] = [], test: Optional[List[sympy.Symbol]] = [], test_vector: Optional[List[sympy.Symbol]] = [], variables: Optional[List[sympy.Symbol]] = [], variable_vectors: Optional[List[sympy.Symbol]] = [], currentDimension: Optional[int] = None):
-    print("NEW INIT ___________________________________")
+def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
+    debug_print(debug, "#### New Level of dimension resolution ####", expression)
     typed_expressions = get_expression_types(expression.expand())
     grouped_products = typed_expressions
     dimension = 0
     expected_dimension = []
     default_dimension = None
+    default_dim = []
+    assumed_dim = []
     for typed_e in typed_expressions:
-        print(typed_e)
+        debug_print(debug, "Analyzed Expression:", expression)
+        debug_print(debug, typed_e["expression"], expression)
         if typed_e["operator"] == div:
             div_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
-            print("DIMENSION SHIFT")
-            print(dimension_shift)
+            dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            debug_print(debug, "Dimension shift of current expression: ", expression)
+            debug_print(debug, dimension_shift - 1, expression)
             expected_dimension.append(dimension_shift - 1)
 
         if typed_e["operator"] == grad:
             grad_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(grad_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            dimension_shift = get_dimension(grad_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            debug_print(debug, "Dimension shift of current expression: ", expression)
+            debug_print(debug, dimension_shift + 1, expression)
             expected_dimension.append(dimension_shift + 1)
 
         if typed_e["operator"] == inner:
             first_arg = typed_e["expression"].args[0]
             second_arg = typed_e["expression"].args[1]
-            dimension_shift_first = get_dimension(first_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
-            dimension_shift_second = get_dimension(second_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            dimension_shift_first = get_dimension(first_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift_second = get_dimension(second_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
             higher_dim = max([dimension_shift_first, dimension_shift_second])
             if abs(abs(dimension_shift_first) - abs(dimension_shift_second)) > 1:
                 print("Invalid Inner Product:")
                 sympy.pprint(typed_e["operator"])
                 raise Exception("Cannot take inner product of expression with dimension difference > 1")
-            dimension = dimension + dimension_shift_first
+            debug_print(debug, "Dimension shift of current expression: ", expression)
+            debug_print(debug, higher_dim - 1, expression)
             expected_dimension.append(higher_dim - 1)
 
         if typed_e["operator"] == curl:
             curl_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(curl_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            dimension_shift = get_dimension(curl_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            debug_print(debug, "Dimension shift of current expression: ", expression)
+            debug_print(debug, dimension_shift, expression)
             expected_dimension.append(dimension_shift)
 
         if typed_e["operator"] == Laplacian:
             lap_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(lap_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            dimension_shift = get_dimension(lap_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            debug_print(debug, "Dimension shift of current expression: ", expression)
+            debug_print(debug, dimension_shift, expression)
             expected_dimension.append(dimension_shift)
 
         if typed_e["operator"] == "symbol" and typed_e["type"] == "add":
             if (typed_e["expression"] in trial_vector) or (typed_e["expression"] in test_vector) or (typed_e["expression"] in variable_vectors):
-                default_dimension = 1
+                debug_print(debug, "Symbol is vector valued", expression)
+                default_dim.append(1)
             elif typed_e["expression"] in trial or typed_e["expression"] in test or typed_e["expression"] in variables:
-                default_dimension = 0
+                debug_print(debug, "Symbol is skalar valued", expression)
+                default_dim.append(0)
             else:
-                # Unknown variable - assuming skalar value
-                if currentDimension != None and currentDimension == -1:
-                    # Current dimension is -1 means this unknown variable should be a vector
-                    if default_dimension != None and default_dimension != 1:
-                        print(typed_e["expression"])
-                        raise Exception("Cannot determine dimension - expected vector value")
-                    # Assume Vector value and continue
-                    default_dimension = 1
+                # Unknown variable - assuming dimension as required to get a skalar result
+                if currentDimension != None and currentDimension < 0:
+                    # Current dimension is negative means this unknown variable should be a of dimension |currentDimension|
+                    if len(list(filter(lambda dim: dim != abs(currentDimension), default_dim))) > 1:
+                        print("Dimension mismatch in expression - found known variables of wrong shape:")
+                        sympy.pprint(expression)
+                        raise Exception("Variables in this expression should be of dimension " + str(abs(currentDimension) + 1))
+                    
+                    # Assume multidemensional value with dim = |currentDimension| and continue
+                    debug_print(debug, "Unknown symbol. Assuming dimension " + str(abs(currentDimension)) + " to get a skalar equation result:", expression)
+                    assumed_dim.append(abs(currentDimension))
                 else:
                     # Assume skalar value
                     if default_dimension == None:
-                        default_dimension = 0
+                        debug_print(debug, "Unknown symbol. Assuming skalar dimension.", expression)
+                        assumed_dim.append(0)
 
         if typed_e["operator"] == "integer" and typed_e["type"] == "add":
-            default_dimension = 0
-        
+            default_dim.append(0)
     
+    # Only unknown symbols are present -> check if the assumed values are all the same and set dimension accordingly
+    if len(default_dim) == 0 and len(assumed_dim) > 0:
+        if all(p == assumed_dim[0] for p in assumed_dim) == False:
+            print("Cannot determine dimension. Occured in expression:")
+            sympy.pprint(expression)
+            raise Exception("Cannot safely determine dimension of Expression. If you think this is a bug, try to provide variables/ functions to the 'variables' or the 'varible_vectors' parameter.")
+        else:
+            if len(expected_dimension) == 0:
+                debug_print(debug, "UNSAFE - Assuming dimension for unknown variable", expression)
+                default_dimension = assumed_dim[0]
+
+    # known variables are used in current term - check if all have the same dimension and set dimension accordingly
+    if len(default_dim) > 0:
+        if all(p == default_dim[0] for p in default_dim) == False:
+            print("Mismatch between shapes of variables used in this expression:")
+            sympy.pprint(expression)
+            raise Exception("Mismatch between dimensions of variables. If you think this is a bug, try to provide variables/ functions to the 'variables' or the 'varible_vectors' parameter.")
+        else:
+            default_dimension = default_dim[0]
+
+    # differential operators and known variables are used in current expression and do not have the same shape
     if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension):
         print("A Dimension mismatch in the following expression has been detected - cannot execute transformation")
         sympy.pprint(expression)
@@ -118,26 +165,28 @@ def get_dimension(expression: sympy.Expr, trial: Optional[List[sympy.Symbol]] = 
     else:
         dimension = expected_dimension[0] if len(expected_dimension) > 0 else 0
 
-
+    debug_print(debug, "#### Finished Nesting Level ####", expression)
     # currentDimension will only contain values when triggered recursively
     if currentDimension != None:
-        #TODO CHECK: e.g. div(u) + v would return v dimension
-        #-> defaultdimension == dimension
-        print("Returned Dimension: ....................")
-        print(dimension if default_dimension is None else default_dimension)
-        print(default_dimension)
         return dimension if default_dimension is None else default_dimension
-    
     else:
         return dimension
 
     
-
+def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], debug: Optional[bool] = False):
+    integral_dimension = get_dimension(expression=expression, trial=trial, trial_vector=trial_vector, test=test, test_vector=test_vector, variables=variables, variable_vectors=variable_vectors, debug=debug)
+    if integral_dimension == 0:
+        return Dimensions.skalar
+    if integral_dimension == 1:
+        return Dimensions.vector
+    
+    raise Exception("Cannot handle multidimensional expression. Please provide a vector- or skalar -valued expression.")
 
 x = sympy.Symbol("x")
 m = sympy.Symbol("m")
 k = sympy.Symbol("k")
-xx =  grad(m) + grad(inner(grad(m), m))
+j = sympy.Symbol("j")
+xx =  inner(grad(m), grad(j)) + m + j
 ll = [x, k]
 di = get_dimension(xx, trial=ll, trial_vector=[m])
 print("Final Dim")
@@ -152,18 +201,7 @@ vv = div(x) + (m + 2 * (x - 1) / m)
 #print(get_typed_expressions(vv, None))
 
 
-def debug_print(debug: bool, message: str, term: Optional[sympy.Expr] = "unknown", format: Optional[str] = "default"):
-    if debug == True:
-        if format == "heading":
-            print(".........." + message + "..........")
-            sympy.pprint(term)
-        if format == "sympyPprint":
-            print(message)
-            sympy.pprint(term)
-            print(" ")
-        if format == "default":
-            print("[" + str(term) + "]: " + message)
-            
+         
 
 def verify_vector_args(function: sympy.Expr, trial: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None):
     first_function_args = function.args[0]

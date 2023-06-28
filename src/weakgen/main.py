@@ -33,7 +33,7 @@ L_as_dolfin_expr = eval(L_generated_string)
 weak_form_object = Weak_form(trial_function_names=["u", "q"], test_function_names=["v", "w"], vector_test_function_names=["m"], string_equation="inner(grad(u), c) = f") #, boundary_condition=Boundaries.neumann, boundary_function="g")
 
 a_generated_string, L_generated_string = weak_form_object.solve()
-'''
+
 
 
 # Symbole definieren
@@ -52,3 +52,10 @@ for expr in expressions:
 xx = 2 * div(a)
 
 print(xx.args)
+'''
+
+
+weak_form_object = Weak_form(trial_function_names=["u", "q"], test_function_names=["v", "w"], vector_test_function_names=["m"], string_equation="inner(grad(u), c) = f") #, boundary_condition=Boundaries.neumann, boundary_function="g")
+
+a_generated_string, L_generated_string = weak_form_object.solve()
+

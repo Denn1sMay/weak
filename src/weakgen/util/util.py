@@ -5,7 +5,7 @@ from ..scripts.integral.util.boundaries.boundaries import Boundaries
 from typing import Literal
 
 _side_types = ["lhs", "rhs"]
-def sort_terms(terms: List[sympy.Expr], side: _side_types, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, boundary: Optional[Boundaries] = None, boundary_func: Optional[sympy.Symbol] = None, debug: Optional[bool] = True):
+def sort_terms(terms: List[sympy.Expr], side: _side_types, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, variables: Optional[List[sympy.Symbol]] = None, variable_vectors: Optional[List[sympy.Symbol]] = None,  boundary: Optional[Boundaries] = None, boundary_func: Optional[sympy.Symbol] = None, debug: Optional[bool] = True):
         new_lhs_terms = []
         new_rhs_terms = []
         rhs_factor = 1
@@ -16,9 +16,9 @@ def sort_terms(terms: List[sympy.Expr], side: _side_types, trial: Optional[List[
             lhs_factor = -1
         for term in terms:
             if (trial != None and term.has(*trial)) or (trial_vector != None and term.has(*trial_vector)):
-                new_lhs_terms.append(Integral(lhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
+                new_lhs_terms.append(Integral(lhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, variables=variables, variable_vectors=variable_vectors, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
             else:
-                new_rhs_terms.append(Integral(rhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
+                new_rhs_terms.append(Integral(rhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, variables=variables, variable_vectors=variable_vectors, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
         return new_lhs_terms, new_rhs_terms
 
 def execute_test_multiplications(terms: List[Integral]):
