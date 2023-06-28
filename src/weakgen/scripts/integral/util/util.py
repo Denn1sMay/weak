@@ -58,7 +58,6 @@ The 'expand()' operator is used on the expression -> only summands should be pre
 def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
     debug_print(debug, "#### New Level of dimension resolution ####", expression)
     typed_expressions = get_expression_types(expression.expand())
-    grouped_products = typed_expressions
     dimension = 0
     expected_dimension = []
     default_dimension = None
@@ -109,7 +108,9 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
             debug_print(debug, dimension_shift, expression)
             expected_dimension.append(dimension_shift)
 
-        if typed_e["operator"] == "symbol" and typed_e["type"] == "add":
+        if typed_e["operator"] == "symbol":
+            if typed_e["type"] == "mul":
+                debug_print(debug, "Multiplications of Vectors and Matrices can change Dimensions, this is not considered here", expression)
             if (typed_e["expression"] in trial_vector) or (typed_e["expression"] in test_vector) or (typed_e["expression"] in variable_vectors):
                 debug_print(debug, "Symbol is vector valued", expression)
                 default_dim.append(1)
@@ -130,7 +131,7 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
                     assumed_dim.append(abs(currentDimension))
                 else:
                     # Assume skalar value
-                    if default_dimension == None:
+                    if len(default_dim) == 0:
                         debug_print(debug, "Unknown symbol. Assuming skalar dimension.", expression)
                         assumed_dim.append(0)
 
@@ -145,8 +146,9 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
             raise Exception("Cannot safely determine dimension of Expression. If you think this is a bug, try to provide variables/ functions to the 'variables' or the 'varible_vectors' parameter.")
         else:
             if len(expected_dimension) == 0:
-                debug_print(debug, "UNSAFE - Assuming dimension for unknown variable", expression)
-                default_dimension = assumed_dim[0]
+                if currentDimension != None:
+                    debug_print(debug, "UNSAFE - Assuming dimension for unknown variable", expression)
+                    default_dimension = assumed_dim[0]
 
     # known variables are used in current term - check if all have the same dimension and set dimension accordingly
     if len(default_dim) > 0:
@@ -156,6 +158,8 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
             raise Exception("Mismatch between dimensions of variables. If you think this is a bug, try to provide variables/ functions to the 'variables' or the 'varible_vectors' parameter.")
         else:
             default_dimension = default_dim[0]
+            if len(assumed_dim) == 0 and len(expected_dimension) == 0 and dimension == 0:
+                dimension = default_dimension
 
     # differential operators and known variables are used in current expression and do not have the same shape
     if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension):
@@ -163,43 +167,40 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
         sympy.pprint(expression)
         raise Exception("Different dimensions detected in expression")
     else:
-        dimension = expected_dimension[0] if len(expected_dimension) > 0 else 0
+        dimension = expected_dimension[0] if len(expected_dimension) > 0 else dimension
 
+    debug_print(debug, "Final Dimension of Level: " + str(dimension if default_dimension is None else default_dimension), expression)
     debug_print(debug, "#### Finished Nesting Level ####", expression)
     # currentDimension will only contain values when triggered recursively
     if currentDimension != None:
         return dimension if default_dimension is None else default_dimension
     else:
-        return dimension
+        if (len(assumed_dim) == 1 and assumed_dim[0] == 0) and len(expected_dimension) == 0 and len(default_dim) == 0:
+            debug_print(debug, "Assumption cannot be verified - will return None and assume dimensions by checking other integrals", expression)
+            return None
+        else:
+            return dimension 
+
+
 
     
 def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], debug: Optional[bool] = False):
     integral_dimension = get_dimension(expression=expression, trial=trial, trial_vector=trial_vector, test=test, test_vector=test_vector, variables=variables, variable_vectors=variable_vectors, debug=debug)
+    if integral_dimension == None:
+        return integral_dimension
     if integral_dimension == 0:
+        print("SKALAR STUGG")
+        print(expression)
         return Dimensions.skalar
+
     if integral_dimension == 1:
         return Dimensions.vector
+    if integral_dimension == 2:
+        return Dimensions.matrix
+    if integral_dimension < 0:
+        raise Exception("Could not determine dimension - got negative dimension")
     
     raise Exception("Cannot handle multidimensional expression. Please provide a vector- or skalar -valued expression.")
-
-x = sympy.Symbol("x")
-m = sympy.Symbol("m")
-k = sympy.Symbol("k")
-j = sympy.Symbol("j")
-xx =  inner(grad(m), grad(j)) + m + j
-ll = [x, k]
-di = get_dimension(xx, trial=ll, trial_vector=[m])
-print("Final Dim")
-print(di)
-
-
-
-exp = div(x) + m + 3 * x
-#print(get_typed_expressions(exp, None))
-
-vv = div(x) + (m + 2 * (x - 1) / m)
-#print(get_typed_expressions(vv, None))
-
 
          
 
@@ -324,7 +325,29 @@ def multiply(terms: list):
         multiplied_terms.append(term.multiply_with_test_function().term)
     return multiplied_terms
 
+def contains_inner_on_surface(term: sympy.Expr):
+    contains_inner = False
+    if term.func == sympy.Mul or term.func == sympy.Add:
+        cotaining_inner = []
+        for arg in term.args:
+            contains_inner.append(contains_inner(arg))
+        if all(lambda item: item == False, contains_inner):
+            return False
+        else:
+            return True
 
+    if term.func == inner:
+        return True
+    else:
+        return False
+
+
+def get_inner(term: sympy.Expr):
+    function_expr = term.atoms(inner)
+    first_function_atom = min(function_expr)
+    function_args = first_function_atom.args
+    return first_function_atom, function_args
+ 
 
 #TODO expression can contain multiple divergence operators
 def get_expression_of_type(searched_function: sympy.Function, term: sympy.Expr):

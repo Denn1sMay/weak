@@ -1,6 +1,6 @@
 from typing import Optional, List
 import sympy
-from .scripts.integral.util.boundaries.boundaries import Boundaries
+from .scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from .scripts.preprocessing.preprocessing import parse_string_equation
 from .scripts.integral.integral import Integral
 from .util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
@@ -8,7 +8,7 @@ from .util.util import execute_test_multiplications, execute_integration, execut
 
 
 class Weak_form:
-    def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, variables: Optional[List[str]] = None, variable_vectors: Optional[List[str]] = None, boundary_condition: Optional[Boundaries] = Boundaries.dirichlet, boundary_function: Optional[str] = None, debug: Optional[bool] = True):
+    def __init__(self, trial_function_names: Optional[List[str]] = None, test_function_names: Optional[List[str]] = None, vector_trial_fuction_names: Optional[List[str]] = None, vector_test_function_names: Optional[List[str]] = None, sympy_equation: Optional[sympy.Eq] = None, string_equation: Optional[str] = None, variables: Optional[List[str]] = None, variable_vectors: Optional[List[str]] = None, boundary_condition: Optional[Boundaries] = Boundaries.dirichlet, boundary_function: Optional[dict[str,str]] = None, debug: Optional[bool] = True):
         '''
         See [GitHub](https://github.com/Denn1sMay/weak) for further Details 
         ## Example Usage
@@ -58,10 +58,11 @@ class Weak_form:
         self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else []
         self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else []
         self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else []
+
         self.test_vector = [sympy.Symbol(vte) for vte in vector_test_function_names] if vector_test_function_names != None else []
         self.variables = [sympy.Symbol(va) for va in variables] if variables != None else []
         self.variable_vectors = [sympy.Symbol(va) for va in variable_vectors] if variable_vectors != None else []
-        self.boundary_func = sympy.Symbol(boundary_function) if boundary_function != None else None
+        self.boundary_func = boundary_function
         self.surface = sympy.Symbol("surface") if boundary_function != None else None
         self.equation = parse_string_equation(string_equation) if string_equation != None else sympy_equation
         self.boundary = boundary_condition
@@ -152,24 +153,29 @@ class Weak_form:
 
     def assume_dimensions(self):
         dimension = None
+        all_dims = list(map(lambda integral: integral.dim, self.rhs_terms + self.lhs_terms))
+        all_dims_not_none = list(filter(lambda dim: dim != None, all_dims))
+        dimension = max(set(all_dims_not_none), key=all_dims_not_none.count)
+        '''
         for term in self.lhs_terms + self.rhs_terms:
             dimension = term.dim
             if dimension != None:
                 break
         if dimension == None:
             raise Exception("Could not verify dimension of equation")
-        new_lhs_terns = []
+        '''
+        new_lhs_terms = []
         for lhs_term in self.lhs_terms:
             if lhs_term.dim == None:
                 lhs_term.dim = dimension
-            new_lhs_terns.append(lhs_term)
-        new_rhs_terns = []
+            new_lhs_terms.append(lhs_term)
+        new_rhs_terms = []
         for rhs_term in self.rhs_terms:
             if rhs_term.dim == None:
                 rhs_term.dim = dimension
-            new_rhs_terns.append(rhs_term)
-        self.lhs_terms = new_lhs_terns
-        self.rhs_terms = new_rhs_terns
+            new_rhs_terms.append(rhs_term)
+        self.lhs_terms = new_lhs_terms
+        self.rhs_terms = new_rhs_terms
             
 
 
