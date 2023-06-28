@@ -3,7 +3,7 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import calculate_dimension, get_differential_function, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function
+from .util.util import calculate_dimension, get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function
 from typing import Optional, List
 
 
@@ -69,7 +69,7 @@ class Integral:
         # Get the curl function
         integral_args = integral.args[0]
         #TODO expression can contain multiple curl operators
-        curl_function, args_with_trial = get_differential_function(curl, integral_args)
+        curl_function, args_with_trial = get_expression_of_type(curl, integral_args)
         # This expression will be replaced
         curl_test_inner_product = inner(curl_function, self.test_vector)
         # v must be vector valued
@@ -95,7 +95,7 @@ class Integral:
         integral = self.term
         debug_print(self.debug, "Performing integration by parts on divergence integral", self.term, "heading")
         integral_args = integral.args[0]
-        divergence_function, args_with_trial = get_differential_function(div, integral_args)
+        divergence_function, args_with_trial = get_expression_of_type(div, integral_args)
         test_gradient = grad(self.test)
         div_test_mult = divergence_function * self.test
         inner_func = inner(args_with_trial, test_gradient)
@@ -129,7 +129,7 @@ class Integral:
         # Get the integrated function
         integral_args = integral.args[0]
         #TODO expression can contain multiple gradient operators
-        gradient_function, args_with_trial = get_differential_function(grad, integral_args)
+        gradient_function, args_with_trial = get_expression_of_type(grad, integral_args)
         # This expression will be replaced
         grad_test_inner_product = inner(gradient_function, self.test_vector)
         # v must be vector valued
@@ -157,7 +157,7 @@ class Integral:
         debug_print(self.debug, "Performing integration by parts on laplace integral", self.term, "heading")
         # Get the integrated function
         integral_args = integral.args[0]
-        laplacian_function, args_with_trial = get_differential_function(Laplacian, integral_args)
+        laplacian_function, args_with_trial = get_expression_of_type(Laplacian, integral_args)
         # Define the gradient of the trial function (argument of the laplace function) -> will be vector valued or skalar valued, depending on the use of u or u_vec as Laplacian argument
         trial_gradient = grad(args_with_trial)
         integrated_parts = None

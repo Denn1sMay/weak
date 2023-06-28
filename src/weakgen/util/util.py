@@ -19,25 +19,6 @@ def sort_terms(terms: List[sympy.Expr], side: _side_types, trial: Optional[List[
                 new_lhs_terms.append(Integral(lhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
             else:
                 new_rhs_terms.append(Integral(rhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-            '''
-            if trial != None and trial_vector != None:
-                if term.has(trial) or term.has(trial_vector):
-                    new_lhs_terms.append(Integral(lhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-                else:
-                    new_rhs_terms.append(Integral(rhs_factor * term, trial=trial, test=test, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-            elif trial != None and trial_vector == None:
-                if term.has(trial):
-                    new_lhs_terms.append(Integral(lhs_factor * term, trial=trial, test=test, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-                else:
-                    new_rhs_terms.append(Integral(rhs_factor * term, trial=trial, test=test, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-            elif trial_vector != None and trial == None:
-                if term.has(trial_vector):
-                    new_lhs_terms.append(Integral(lhs_factor * term, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-                else:
-                    new_rhs_terms.append(Integral(rhs_factor * term, trial_vector=trial_vector, test_vector=test_vector, boundary_condition=boundary, boundary_function=boundary_func, debug=debug))
-            else:
-                raise Exception("Need to provide string literals of trial- and test function(s)")
-                '''
         return new_lhs_terms, new_rhs_terms
 
 def execute_test_multiplications(terms: List[Integral]):

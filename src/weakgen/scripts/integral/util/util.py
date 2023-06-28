@@ -7,6 +7,151 @@ from sympy.vector import Laplacian
 
 
 
+def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", productId: Optional[int] = 0):
+    if expression.func == sympy.Mul:
+        typed_expressions = []
+        for arg in expression.args:
+            diff_func = get_expression_types(arg, "mul", productId)
+            typed_expressions = typed_expressions + diff_func
+        return typed_expressions
+
+    if expression.func == sympy.Add:
+        typed_expressions = []
+        productId = productId + 1
+        for arg in expression.args:
+            diff_func = get_expression_types(arg, "add", productId)
+            typed_expressions = typed_expressions + diff_func
+        return typed_expressions
+    
+    if expression.func == div:
+        return [{"expression": expression, "operator": div, "type": type, "productId": productId}]
+    if expression.func == grad:
+        return [{"expression": expression, "operator": grad, "type": type, "productId": productId}]
+    if expression.func == curl:
+        return [{"expression": expression,"operator": curl, "type": type, "productId": productId}]
+    if expression.func == inner:
+        return [{"expression": expression,"operator": inner, "type": type, "productId": productId}]
+    if expression.func == Laplacian:
+        return [{"expression": expression, "operator": Laplacian, "type": type, "productId": productId}]
+    if expression.func == sympy.Symbol:
+        return [{"expression": expression, "operator": "symbol", "type": type, "productId": productId}]
+    if expression.func == sympy.Integer:
+        return [{"expression": expression, "operator": "integer", "type": type, "productId": productId}]
+    return [{"expression": expression, "operator": "unknown", "type": type, "productId": productId}]
+
+
+'''
+Will apply rules on how the dimensions are shifted by using nabla operator.
+The 'expand()' operator is used on the expression -> only summands should be present in typed_expressions
+'''
+def get_dimension(expression: sympy.Expr, trial: Optional[List[sympy.Symbol]] = [], trial_vector: Optional[List[sympy.Symbol]] = [], test: Optional[List[sympy.Symbol]] = [], test_vector: Optional[List[sympy.Symbol]] = [], variables: Optional[List[sympy.Symbol]] = [], variable_vectors: Optional[List[sympy.Symbol]] = [], currentDimension: Optional[int] = None):
+    print("NEW INIT ___________________________________")
+    typed_expressions = get_expression_types(expression.expand())
+    grouped_products = typed_expressions
+    dimension = 0
+    expected_dimension = []
+    default_dimension = None
+    for typed_e in typed_expressions:
+        print(typed_e)
+        if typed_e["operator"] == div:
+            div_arg = typed_e["expression"].args[0]
+            dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            print("DIMENSION SHIFT")
+            print(dimension_shift)
+            expected_dimension.append(dimension_shift - 1)
+
+        if typed_e["operator"] == grad:
+            grad_arg = typed_e["expression"].args[0]
+            dimension_shift = get_dimension(grad_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            expected_dimension.append(dimension_shift + 1)
+
+        if typed_e["operator"] == inner:
+            first_arg = typed_e["expression"].args[0]
+            second_arg = typed_e["expression"].args[1]
+            dimension_shift_first = get_dimension(first_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            dimension_shift_second = get_dimension(second_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            higher_dim = max([dimension_shift_first, dimension_shift_second])
+            if abs(abs(dimension_shift_first) - abs(dimension_shift_second)) > 1:
+                print("Invalid Inner Product:")
+                sympy.pprint(typed_e["operator"])
+                raise Exception("Cannot take inner product of expression with dimension difference > 1")
+            dimension = dimension + dimension_shift_first
+            expected_dimension.append(higher_dim - 1)
+
+        if typed_e["operator"] == curl:
+            curl_arg = typed_e["expression"].args[0]
+            dimension_shift = get_dimension(curl_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            expected_dimension.append(dimension_shift)
+
+        if typed_e["operator"] == Laplacian:
+            lap_arg = typed_e["expression"].args[0]
+            dimension_shift = get_dimension(lap_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension)
+            expected_dimension.append(dimension_shift)
+
+        if typed_e["operator"] == "symbol" and typed_e["type"] == "add":
+            if (typed_e["expression"] in trial_vector) or (typed_e["expression"] in test_vector) or (typed_e["expression"] in variable_vectors):
+                default_dimension = 1
+            elif typed_e["expression"] in trial or typed_e["expression"] in test or typed_e["expression"] in variables:
+                default_dimension = 0
+            else:
+                # Unknown variable - assuming skalar value
+                if currentDimension != None and currentDimension == -1:
+                    # Current dimension is -1 means this unknown variable should be a vector
+                    if default_dimension != None and default_dimension != 1:
+                        print(typed_e["expression"])
+                        raise Exception("Cannot determine dimension - expected vector value")
+                    # Assume Vector value and continue
+                    default_dimension = 1
+                else:
+                    # Assume skalar value
+                    if default_dimension == None:
+                        default_dimension = 0
+
+        if typed_e["operator"] == "integer" and typed_e["type"] == "add":
+            default_dimension = 0
+        
+    
+    if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension):
+        print("A Dimension mismatch in the following expression has been detected - cannot execute transformation")
+        sympy.pprint(expression)
+        raise Exception("Different dimensions detected in expression")
+    else:
+        dimension = expected_dimension[0] if len(expected_dimension) > 0 else 0
+
+
+    # currentDimension will only contain values when triggered recursively
+    if currentDimension != None:
+        #TODO CHECK: e.g. div(u) + v would return v dimension
+        #-> defaultdimension == dimension
+        print("Returned Dimension: ....................")
+        print(dimension if default_dimension is None else default_dimension)
+        print(default_dimension)
+        return dimension if default_dimension is None else default_dimension
+    
+    else:
+        return dimension
+
+    
+
+
+x = sympy.Symbol("x")
+m = sympy.Symbol("m")
+k = sympy.Symbol("k")
+xx =  grad(m) + grad(inner(grad(m), m))
+ll = [x, k]
+di = get_dimension(xx, trial=ll, trial_vector=[m])
+print("Final Dim")
+print(di)
+
+
+
+exp = div(x) + m + 3 * x
+#print(get_typed_expressions(exp, None))
+
+vv = div(x) + (m + 2 * (x - 1) / m)
+#print(get_typed_expressions(vv, None))
+
+
 def debug_print(debug: bool, message: str, term: Optional[sympy.Expr] = "unknown", format: Optional[str] = "default"):
     if debug == True:
         if format == "heading":
@@ -144,7 +289,7 @@ def multiply(terms: list):
 
 
 #TODO expression can contain multiple divergence operators
-def get_differential_function(searched_function: sympy.Function, term: sympy.Expr):
+def get_expression_of_type(searched_function: sympy.Function, term: sympy.Expr):
     function_expr = term.atoms(searched_function)
     if len(function_expr) > 1:
         raise Exception("Nested differential operator detected - not supported")

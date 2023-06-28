@@ -26,8 +26,29 @@ a_generated_string, L_generated_string = weak_form_object.solve()
 
 a_as_dolfin_expr = eval(a_generated_string)
 L_as_dolfin_expr = eval(L_generated_string)
-'''
 
-weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f") #, boundary_condition=Boundaries.neumann, boundary_function="g")
+
+
+
+weak_form_object = Weak_form(trial_function_names=["u", "q"], test_function_names=["v", "w"], vector_test_function_names=["m"], string_equation="inner(grad(u), c) = f") #, boundary_condition=Boundaries.neumann, boundary_function="g")
 
 a_generated_string, L_generated_string = weak_form_object.solve()
+'''
+
+
+# Symbole definieren
+f, a = sympy.symbols('f a')
+
+# Gleichung erstellen
+equation = sympy.Eq(2 * f, 3 + div(a) + div(grad(2 + a)) * 2 + grad( 3 + div(f) * 7))
+
+# Ausdrücke finden, die entweder "div" oder "grad" enthalten
+expressions = equation.find(div)
+
+# Ausdrücke ausgeben
+for expr in expressions:
+    print(expr)
+
+xx = 2 * div(a)
+
+print(xx.args)
