@@ -5,6 +5,9 @@ from .dimensions.dimensions import Dimensions
 from .operators.operators import div, grad, curl, inner
 from sympy.vector import Laplacian
 
+operator_types = [div, grad, curl, Laplacian]
+
+
 def debug_print(debug: bool, message: str, term: Optional[sympy.Expr] = "unknown", format: Optional[str] = "default"):
     if debug == True:
         if format == "heading":
@@ -325,7 +328,7 @@ def multiply(terms: list):
         multiplied_terms.append(term.multiply_with_test_function().term)
     return multiplied_terms
 
-def contains_inner_on_surface(term: sympy.Expr):
+def contains_function_on_surface(function: sympy.Function, term: sympy.Expr):
     contains_inner = False
     if term.func == sympy.Mul or term.func == sympy.Add:
         cotaining_inner = []
@@ -336,7 +339,7 @@ def contains_inner_on_surface(term: sympy.Expr):
         else:
             return True
 
-    if term.func == inner:
+    if term.func == function:
         return True
     else:
         return False

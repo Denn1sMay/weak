@@ -55,7 +55,7 @@ print(xx.args)
 '''
 boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
 print(boundaryFunctions)
-weak_form_object = Weak_form(trial_function_names=["u", "l"], vector_trial_fuction_names=["u_vec", "l_vec"], test_function_names=["v", "w"], vector_test_function_names=["m"], variable_vectors=["var_vec"], string_equation="div(u_vec) + exp(2) = f", boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions)
+weak_form_object = Weak_form(trial_function_names=["u", "l"], vector_trial_fuction_names=["u_vec", "l_vec"], test_function_names=["v", "w"], vector_test_function_names=["m"], variable_vectors=["var_vec"], string_equation="inner(grad(u), var_vec) = f", boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions)
 
 a_generated_string, L_generated_string = weak_form_object.solve()
 

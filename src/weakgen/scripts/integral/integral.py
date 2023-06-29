@@ -3,7 +3,7 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function, get_dimension_type, get_inner, contains_inner_on_surface
+from .util.util import get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function, get_dimension_type, get_inner, contains_function_on_surface, operator_types
 from typing import Optional, List
 
 
@@ -31,7 +31,35 @@ class Integral:
         self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.variables, self.variable_vectors, debug=self.debug)
 
 
+    def loop_inner_expressions(self, expression: sympy.Expr):
+        multiplication_executed = False
+        current_term = self.term
+        replaced_expr = None
+        new_expr = None
+        while multiplication_executed == False:
+            if contains_function_on_surface(inner, current_term):
+                inner_func, inner_args = get_inner(self.term)
+                for arg in inner_args:
+                    for operator in operator_types:
+                        if contains_function_on_surface(operator, arg):
+                            replaced_expr = arg
+                            new_expr = arg * self.test
+                            multiplication_executed = True
+                            print("RETURNING")
+                            return replaced_expr, new_expr
+            else:
+                break
+        return replaced_expr, new_expr
+ 
+
     def multiply_with_test_function(self):
+
+
+        replaced_expr, new_expr = self.loop_inner_expressions(self.term)
+        if replaced_expr != None and new_expr != None:
+            self.term = self.term.subs(replaced_expr, new_expr)
+            return
+        
         if self.dim == Dimensions.skalar:
             if self.test == None:
                 raise Exception("Need to provide string literal for skalar valued test function in order to create inner product")
@@ -44,13 +72,30 @@ class Integral:
             self.term = self.term * self.test
         self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.variables, self.variable_vectors, debug=self.debug)
 
+
+
     def integrate_over_domain(self):
         self.term = sympy.Integral(self.term, domain)
 
     '''
     Integration by Parts
     '''
-    def integrate_by_parts(self):
+    def integrate_by_parts(self, currentTerm: Optional[sympy.Expr] = None):
+        currentTerm = currentTerm if currentTerm is not None else self.term
+
+
+        if currentTerm is None and contains_function_on_surface(inner, currentTerm) and (currentTerm.has(div) or currentTerm.has(Laplacian)):
+            # Divergence/ Laplacian that returns a vector -> args of operators are matrices
+            inner_func, inner_args = get_inner(self.term)
+            new_args = []
+            for arg in inner_args:
+                if arg.has(div) or arg.has(Laplacian):
+                    print("INNER")
+                    #integrated_parts = self.integrate_by_parts(arg)
+                    #new_args.append()
+
+
+
         if self.term.has(div) and not self.term.has(grad):
             self.check_linearity(div)
             if self.term.has(Laplacian):
@@ -155,7 +200,7 @@ class Integral:
             raise Exception("Cannot perform integration by parts on laplacian function - dimension unknown")
        
         # TODO inner products have to be handeled different
-        if contains_inner_on_surface(self.term):
+        if contains_function_on_surface(inner, self.term):
             # Function look like: inner(Laplacian(u_vec), v-vec) -> Laplacian(u_vec) results in Vector
 
             existing_inner, inner_args = get_inner(integral_args)
