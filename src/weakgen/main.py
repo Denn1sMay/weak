@@ -56,12 +56,22 @@ print(xx.args)
 
 
 
-stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
-
 boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
-print(boundaryFunctions)
 
-weak_form_object = Weak_form(trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variable_vectors=["var_vec", "m_vec"], string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
 
-a_generated_string, L_generated_string = weak_form_object.solve()
+def stokes_eq():
+    stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
 
+    weak_form_object = Weak_form(trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variable_vectors=["var_vec", "m_vec"], string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+
+    a_generated_string, L_generated_string = weak_form_object.solve()
+
+
+def lin_elas(): 
+    lin_el = "-div(sigma) = f"
+    weak_form_object = Weak_form(tensor_trial_function_names=["sigma"], vector_test_function_names=["v_vec"], variable_vectors=["f"], string_equation=lin_el, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+    a_generated_string, L_generated_string = weak_form_object.solve()
+
+
+
+lin_elas()

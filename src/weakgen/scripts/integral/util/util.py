@@ -60,7 +60,7 @@ def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", pr
 Will apply rules on how the dimensions are shifted by using nabla operator.
 The 'expand()' operator is used on the expression -> only summands should be present in typed_expressions
 '''
-def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
+def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], trial_tensor: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
     debug_print(debug, "#### New Level of dimension resolution ####", expression)
     typed_expressions = get_expression_types(expression.expand())
     dimension = 0
@@ -75,14 +75,14 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
 
         if typed_e["operator"] == div:
             div_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
             debug_print(debug, "Dimension shift of current expression: ", expression)
             debug_print(debug, dimension_shift - 1, expression)
             expected_dimension.append(dimension_shift - 1)
 
         if typed_e["operator"] == grad:
             grad_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(grad_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift = get_dimension(grad_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
             debug_print(debug, "Dimension shift of current expression: ", expression)
             debug_print(debug, dimension_shift + 1, expression)
             expected_dimension.append(dimension_shift + 1)
@@ -90,8 +90,8 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
         if typed_e["operator"] == inner:
             first_arg = typed_e["expression"].args[0]
             second_arg = typed_e["expression"].args[1]
-            dimension_shift_first = get_dimension(first_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
-            dimension_shift_second = get_dimension(second_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift_first = get_dimension(first_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
+            dimension_shift_second = get_dimension(second_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
             higher_dim = max([dimension_shift_first, dimension_shift_second])
             if abs(abs(dimension_shift_first) - abs(dimension_shift_second)) > 1:
                 print("Invalid Inner Product:")
@@ -103,14 +103,14 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
 
         if typed_e["operator"] == curl:
             curl_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(curl_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift = get_dimension(curl_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
             debug_print(debug, "Dimension shift of current expression: ", expression)
             debug_print(debug, dimension_shift, expression)
             expected_dimension.append(dimension_shift)
 
         if typed_e["operator"] == Laplacian:
             lap_arg = typed_e["expression"].args[0]
-            dimension_shift = get_dimension(lap_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
+            dimension_shift = get_dimension(lap_arg, trial, trial_vector, test, test_vector, trial_tensor, variables, variable_vectors, dimension, debug)
             debug_print(debug, "Dimension shift of current expression: ", expression)
             debug_print(debug, dimension_shift, expression)
             expected_dimension.append(dimension_shift)
@@ -126,6 +126,9 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
             elif typed_e["expression"] in trial or typed_e["expression"] in test or typed_e["expression"] in variables:
                 debug_print(debug, "Symbol is skalar valued", expression)
                 default_dim.append(0)
+            elif typed_e["expression"] in trial_tensor:
+                debug_print(debug, "Symbol is a tensor", expression)
+                default_dim.append(2)
             else:
                 # Unknown variable - assuming dimension as required to get a skalar result
                 if currentDimension != None and currentDimension < 0:
@@ -196,8 +199,8 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
 
 
     
-def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], debug: Optional[bool] = False):
-    integral_dimension = get_dimension(expression=expression, trial=trial, trial_vector=trial_vector, test=test, test_vector=test_vector, variables=variables, variable_vectors=variable_vectors, debug=debug)
+def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], trial_tensor: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], debug: Optional[bool] = False):
+    integral_dimension = get_dimension(expression=expression, trial=trial, trial_vector=trial_vector, test=test, test_vector=test_vector, trial_tensor=trial_tensor, variables=variables, variable_vectors=variable_vectors, debug=debug)
     if integral_dimension == None:
         return integral_dimension
     if integral_dimension == 0:
@@ -408,14 +411,14 @@ def replace_div_grad_with_laplace(term: sympy.Expr):
 def get_corresponding_test_function(term: sympy.Expr, test: List[sympy.Symbol], trials: Optional[List[sympy.Symbol]] = None):
     if trials == None:
         # No Trial function present - will return the first Test Function in the list
-        return test[0]
+        return test[0] if len(test) > 0 else None
     
     corresponding_function = None
     for index, trial in enumerate(trials):
         # Will immediately return after first trial function is found (Multiple Trial Functions in term?)
         if term.has(trial):
             corresponding_function = test[index]
-    return corresponding_function if corresponding_function != None else test[0]
+    return corresponding_function if corresponding_function != None else (test[0] if len(test) > 0 else None)
 
 
     

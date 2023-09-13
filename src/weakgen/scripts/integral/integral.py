@@ -11,7 +11,7 @@ domain = sympy.Symbol("omega")
 surface = sympy.Symbol("surface")
 
 class Integral:
-    def __init__(self, term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = [], test: Optional[List[sympy.Symbol]] = [], trial_vector: Optional[List[sympy.Symbol]] = [], test_vector: Optional[List[sympy.Symbol]] = [], variables: Optional[List[sympy.Symbol]] = [], variable_vectors: Optional[List[sympy.Symbol]] = [], boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[dict[str,str]] = None, debug: Optional[bool] = False):
+    def __init__(self, term: sympy.Expr, trial: Optional[List[sympy.Symbol]] = [], test: Optional[List[sympy.Symbol]] = [], trial_vector: Optional[List[sympy.Symbol]] = [], test_vector: Optional[List[sympy.Symbol]] = [], trial_tensor: Optional[List[sympy.Symbol]] = [], variables: Optional[List[sympy.Symbol]] = [], variable_vectors: Optional[List[sympy.Symbol]] = [], boundary_condition: Optional[Boundaries] = None, boundary_function: Optional[dict[str,str]] = None, debug: Optional[bool] = False):
         replaced_term = replace_div_grad_with_laplace(term)
         self.term = replaced_term
         self.trial = trial
@@ -22,13 +22,14 @@ class Integral:
         self.test_vector = get_corresponding_test_function(term, test_vector, trial_vector) if test_vector != None else test_vector
         self.all_test_vectors = test_vector
         self.trial_vector = trial_vector
+        self.trial_tensor = trial_tensor
         self.variables = variables
         self.variable_vectors = variable_vectors
         self.boundary_condition = boundary_condition
         self.boundary_function = boundary_function
         self.debug = debug
 
-        self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.variables, self.variable_vectors, debug=self.debug)
+        self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.trial_tensor, self.variables, self.variable_vectors, debug=self.debug)
         self.is_nonlinear = self.is_nonlinear()
 
 
@@ -300,6 +301,8 @@ class Integral:
     '''
     def convert_integral_to_ufl_string(self):
         integral_term = self.term
+        if self.term == 0:
+            return "0"
         integral_atom = list(integral_term.atoms(sympy.Integral))[0]
 
         integral_args = integral_atom.args[0]
