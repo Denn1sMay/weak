@@ -26,6 +26,7 @@ def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", pr
         typed_expressions = []
         for arg in expression.args:
             diff_func = get_expression_types(arg, "mul", productId)
+            # Add to List
             typed_expressions = typed_expressions + diff_func
         return typed_expressions
 
@@ -34,6 +35,7 @@ def get_expression_types(expression: sympy.Expr, type: Optional[str] = "add", pr
         productId = productId + 1
         for arg in expression.args:
             diff_func = get_expression_types(arg, "add", productId)
+            # Add to List
             typed_expressions = typed_expressions + diff_func
         return typed_expressions
     
@@ -66,9 +68,11 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
     default_dimension = None
     default_dim = []
     assumed_dim = []
+    is_vector_multiplication = False
     for typed_e in typed_expressions:
         debug_print(debug, "Analyzed Expression:", expression)
         debug_print(debug, typed_e["expression"], expression)
+
         if typed_e["operator"] == div:
             div_arg = typed_e["expression"].args[0]
             dimension_shift = get_dimension(div_arg, trial, trial_vector, test, test_vector, variables, variable_vectors, dimension, debug)
@@ -112,7 +116,9 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
             expected_dimension.append(dimension_shift)
 
         if typed_e["operator"] == "symbol":
-            if typed_e["type"] == "mul":
+            if typed_e["type"] == "mul" and (typed_e["expression"] in trial_vector) or (typed_e["expression"] in test_vector) or (typed_e["expression"] in variable_vectors):
+                expected_dimension.append(1)
+                is_vector_multiplication = True
                 debug_print(debug, "Multiplications of Vectors and Matrices can change Dimensions, this is not considered here", expression)
             if (typed_e["expression"] in trial_vector) or (typed_e["expression"] in test_vector) or (typed_e["expression"] in variable_vectors):
                 debug_print(debug, "Symbol is vector valued", expression)
@@ -165,12 +171,15 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
                 dimension = default_dimension
 
     # differential operators and known variables are used in current expression and do not have the same shape
-    if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension):
+    if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension) and is_vector_multiplication == False:
         print("A Dimension mismatch in the following expression has been detected - cannot execute transformation")
         sympy.pprint(expression)
         raise Exception("Different dimensions detected in expression")
     else:
-        dimension = expected_dimension[0] if len(expected_dimension) > 0 else dimension
+        if is_vector_multiplication:
+            dimension = 1 #expected_dimension[0] + 1 if len(expected_dimension) > 0 else dimension + 1
+        else:
+            dimension = expected_dimension[0] if len(expected_dimension) > 0 else dimension
 
     debug_print(debug, "Final Dimension of Level: " + str(dimension if default_dimension is None else default_dimension), expression)
     debug_print(debug, "#### Finished Nesting Level ####", expression)
@@ -192,8 +201,6 @@ def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], t
     if integral_dimension == None:
         return integral_dimension
     if integral_dimension == 0:
-        print("SKALAR STUGG")
-        print(expression)
         return Dimensions.skalar
 
     if integral_dimension == 1:
@@ -333,11 +340,8 @@ def contains_function_on_surface(function: sympy.Function, term: sympy.Expr):
     if term.func == sympy.Mul or term.func == sympy.Add:
         cotaining_inner = []
         for arg in term.args:
-            contains_inner.append(contains_inner(arg))
-        if all(lambda item: item == False, contains_inner):
-            return False
-        else:
-            return True
+            cotaining_inner.append(contains_function_on_surface(function, arg))
+        return not all(item == False for item in cotaining_inner)
 
     if term.func == function:
         return True
@@ -350,6 +354,18 @@ def get_inner(term: sympy.Expr):
     first_function_atom = min(function_expr)
     function_args = first_function_atom.args
     return first_function_atom, function_args
+
+def get_sorted_inner_args(expression: sympy.Expr, test_vector: Optional[sympy.Symbol]):
+    args = expression.args
+    test_arg = None
+    other_arg = None
+    for arg in args:
+        if arg.has(test_vector):
+            test_arg = arg
+        else:
+            other_arg = arg
+    return other_arg, test_arg
+
  
 
 #TODO expression can contain multiple divergence operators
@@ -361,6 +377,17 @@ def get_expression_of_type(searched_function: sympy.Function, term: sympy.Expr):
     function_args = first_function_atom.args
     function_args_with_trial = function_args[0]
     return first_function_atom, function_args_with_trial
+
+def is_test_inner_product(expression: sympy.Expr, test_vector: Optional[sympy.Symbol]):
+    if contains_function_on_surface(inner, expression):
+        test_inner_product, inner_args = get_inner(expression)
+        if test_vector is not None and (inner_args[0].has(test_vector) or inner_args[1].has(test_vector)):
+            return True
+        else:
+            return False
+    else:
+        return False
+
     
 def replace_div_grad_with_laplace(term: sympy.Expr):
     returned_term = term

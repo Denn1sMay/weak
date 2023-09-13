@@ -72,7 +72,7 @@ class Weak_form:
 
         self.make_sorted_terms()
         self.assume_dimensions()
-        self.verify_dimensions()
+        #self.verify_dimensions()
 
 
     def solve(self):

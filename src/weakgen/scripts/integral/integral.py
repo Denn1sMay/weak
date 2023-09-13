@@ -3,7 +3,7 @@ from sympy.vector import Laplacian
 from .util.dimensions.dimensions import Dimensions
 from .util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from .util.operators.operators import div, grad, curl, inner
-from .util.util import get_expression_of_type, replace_div_grad_with_laplace, debug_print, get_corresponding_test_function, get_dimension_type, get_inner, contains_function_on_surface, operator_types
+from .util.util import get_expression_of_type, get_expression_types, get_sorted_inner_args, replace_div_grad_with_laplace, is_test_inner_product, debug_print, get_corresponding_test_function, get_dimension_type, get_inner, contains_function_on_surface, operator_types
 from typing import Optional, List
 
 
@@ -29,6 +29,7 @@ class Integral:
         self.debug = debug
 
         self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.variables, self.variable_vectors, debug=self.debug)
+        self.is_nonlinear = self.is_nonlinear()
 
 
     def loop_inner_expressions(self, expression: sympy.Expr):
@@ -53,18 +54,22 @@ class Integral:
  
 
     def multiply_with_test_function(self):
-
-
+        '''
         replaced_expr, new_expr = self.loop_inner_expressions(self.term)
         if replaced_expr != None and new_expr != None:
             self.term = self.term.subs(replaced_expr, new_expr)
             return
-        
+        '''
+        print("MULTIPLICATION")
+        print(self.term)
+        print(self.dim)
         if self.dim == Dimensions.skalar:
+            print("SKALAR")
             if self.test == None:
                 raise Exception("Need to provide string literal for skalar valued test function in order to create inner product")
             self.term = self.term * self.test
         elif self.dim == Dimensions.vector:
+            print("VECTOR")
             if self.test_vector == None:
                 raise Exception("Need to provide string literal for vector valued test function in order to create inner product")
             self.term = inner(self.term, self.test_vector)
@@ -94,8 +99,8 @@ class Integral:
                     #integrated_parts = self.integrate_by_parts(arg)
                     #new_args.append()
 
-
-
+        if(self.is_nonlinear):
+            return
         if self.term.has(div) and not self.term.has(grad):
             self.check_linearity(div)
             if self.term.has(Laplacian):
@@ -127,12 +132,12 @@ class Integral:
         # This expression will be inserted
         trial_curl_inner = inner(args_with_trial, test_curl)
         integral_over_domain = integral_args.subs(curl_test_inner_product, trial_curl_inner)
-        integrated_parts = sympy.Integral(-integral_over_domain, domain)
+        integrated_parts = sympy.Integral(integral_over_domain, domain)
 
         if self.boundary_condition != None:
             boundary_term = self.get_boundary_term(div, args_with_trial)
             if boundary_term != None:
-                integrated_parts = integrated_parts + boundary_term
+                integrated_parts = integrated_parts - boundary_term
 
         self.term = integrated_parts
         debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
@@ -144,16 +149,29 @@ class Integral:
         debug_print(self.debug, "Performing integration by parts on divergence integral", self.term, "heading")
         integral_args = integral.args[0]
         divergence_function, args_with_trial = get_expression_of_type(div, integral_args)
-        test_gradient = grad(self.test)
-        div_test_mult = divergence_function * self.test
-        inner_func = inner(args_with_trial, test_gradient)
-        integral_over_domain = integral_args.subs(div_test_mult, inner_func)
-        integrated_parts = sympy.Integral(-integral_over_domain, domain)
+
+        replaced_expression = None
+        new_expression = None
+        if is_test_inner_product(integral_args, self.test_vector):
+            test_gradient = grad(self.test_vector)
+            print("_____---__---_--_--_-__-_-_-")
+            replaced_expression, inner_args = get_inner(integral_args)
+            arg_with_trial, arg_with_test_vector =  get_sorted_inner_args(integral_args, self.test_vector)
+            inner_func = inner(args_with_trial, grad(arg_with_test_vector))
+            new_expression = arg_with_trial.subs(divergence_function, inner_func)
+            print(new_expression)
+        else:
+            test_gradient = grad(self.test)
+            replaced_expression = divergence_function * self.test
+            new_expression = inner(args_with_trial, test_gradient)
+
+        integral_over_domain = integral_args.subs(replaced_expression, new_expression)
+        integrated_parts = sympy.Integral(integral_over_domain, domain)
 
         if self.boundary_condition != None:
             boundary_term = self.get_boundary_term(div, args_with_trial)
             if boundary_term != None:
-                integrated_parts = integrated_parts + boundary_term
+                integrated_parts = integrated_parts - boundary_term
 
         self.term = integrated_parts
         debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
@@ -174,12 +192,12 @@ class Integral:
         # This expression will be inserted
         trial_div_mult = args_with_trial * test_divergence
         integral_over_domain = integral_args.subs(grad_test_inner_product, trial_div_mult)
-        integrated_parts = sympy.Integral(-integral_over_domain, domain)
+        integrated_parts = sympy.Integral(integral_over_domain, domain)
 
         if self.boundary_condition != None:
             boundary_term = self.get_boundary_term(grad, args_with_trial)
             if boundary_term != None:
-                integrated_parts = integrated_parts + boundary_term
+                integrated_parts = integrated_parts - boundary_term
 
         self.term = integrated_parts
         debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
@@ -227,12 +245,12 @@ class Integral:
             laplacian_test_mult = laplacian_function * self.test
             inner_func = inner(trial_gradient, test_gradient)
             integral_over_domain = integral_args.subs(laplacian_test_mult, inner_func)
-            integrated_parts = sympy.Integral(-integral_over_domain, domain)
+            integrated_parts = sympy.Integral(integral_over_domain, domain)
 
         if self.boundary_condition != None:
-            boundary_term = self.get_boundary_term(div, args_with_trial)
+            boundary_term = self.get_boundary_term(Laplacian, args_with_trial)
             if boundary_term != None:
-                integrated_parts = integrated_parts + boundary_term
+                integrated_parts = integrated_parts - boundary_term
 
         self.term = integrated_parts
         debug_print(self.debug, "Transformed Integral: ", self.term, "sympyPprint")
@@ -246,9 +264,6 @@ class Integral:
             
             if self.boundary_condition == Boundaries.neumann:
                 included_symbols = args_with_trial.free_symbols
-                print("__-----___--_---_--_---_")
-                print("BOundary")
-                print(args_with_trial)
 
                 if operation == div:
                     included_trials = [sym for sym in included_symbols if sym in self.trial_vector]
@@ -314,3 +329,20 @@ class Integral:
                 if len(diff_operator_in_exponential) > 0:
                     debug_print(True, "Exponent in differential Operator - not implemented", self.term)
                     raise Exception("Exponent in differential operators are not allowed")
+                
+
+    def is_nonlinear(self):
+        typed_expressions = get_expression_types(expression=self.term)
+        linearity_level = 0
+        for typed_e in typed_expressions:
+            if typed_e["type"] == "mul":
+                included_atoms = typed_e["expression"].atoms()
+                included_trial = set(included_atoms) & set(self.trial)
+                included_trial_vector = set(included_atoms) & set(self.trial_vector)
+                if len(included_trial_vector) > 0 or len(included_trial) > 0:
+                    linearity_level = linearity_level + 1
+
+        if linearity_level > 1:
+            return True
+        else:
+            return False
