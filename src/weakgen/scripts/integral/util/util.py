@@ -175,9 +175,12 @@ def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_
 
     # differential operators and known variables are used in current expression and do not have the same shape
     if len(expected_dimension) > 0 and (all(p == expected_dimension[0] for p in expected_dimension) == False or default_dimension != None and expected_dimension[0] != default_dimension) and is_vector_multiplication == False:
-        print("A Dimension mismatch in the following expression has been detected - cannot execute transformation")
-        sympy.pprint(expression)
-        raise Exception("Different dimensions detected in expression")
+        if all(ex["type"] == "mul" for ex in typed_expressions):
+            dimension = max(expected_dimension)
+        else:
+            print("A Dimension mismatch in the following expression has been detected - cannot execute transformation")
+            sympy.pprint(expression)
+            raise Exception("Different dimensions detected in expression")
     else:
         if is_vector_multiplication:
             dimension = 1 #expected_dimension[0] + 1 if len(expected_dimension) > 0 else dimension + 1

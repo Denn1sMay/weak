@@ -72,6 +72,13 @@ def lin_elas():
     weak_form_object = Weak_form(tensor_trial_function_names=["sigma"], vector_test_function_names=["v_vec"], variable_vectors=["f"], string_equation=lin_el, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
     a_generated_string, L_generated_string = weak_form_object.solve()
 
+def rand():
+    rand = "grad(p) * m = f"
 
+    weak_form_object = Weak_form(trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=rand, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
 
-lin_elas()
+    a_generated_string, L_generated_string = weak_form_object.solve()
+
+rand()
+#stokes_eq()
+#lin_elas()
