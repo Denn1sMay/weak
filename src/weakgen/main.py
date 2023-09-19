@@ -73,7 +73,7 @@ def stokes_eq():
 def stokes_eq2():
     stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
 
-    weak_form_object = Weak_form(functions={"u_vec": {"order": 2, "dim": "vector"}, "p": {"order": 2, "dim": "scalar"}}, mesh=mesh, string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+    weak_form_object = Weak_form(functions={"u_vec": {"order": 2, "dim": "vector"}, "p": {"order": 2, "dim": "scalar"}}, mesh="mymesh", string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
 
     a_generated_string, L_generated_string, c = weak_form_object.solve()
 
