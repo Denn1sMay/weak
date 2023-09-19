@@ -88,7 +88,7 @@ def execute_ufl_conversion(terms: List[Integral]):
 
 def get_executable_string(variables: dict, mesh, lhs, rhs):
     imports = """
-from ufl import FiniteElement, MixedElement, TestFunctions, TrialFunctions, TrialFunction, TestFunction, inner, grad, div, curl, div, ds, dx
+from ufl import FiniteElement, VectorElement, MixedElement, TestFunctions, TrialFunctions, TrialFunction, TestFunction, inner, dot, grad, div, curl, div, ds, dx
 from dolfinx.fem import FunctionSpace
 from mpi4py import MPI
 from dolfinx import mesh
@@ -103,9 +103,14 @@ from dolfinx import mesh
     counter = 1
     elements_string = ""
     for key, value in variables.items():
-        elements = elements + f"""
+        if (value["dim"] == "scalar" or value["dim"] == Dimensions.scalar):
+            elements = elements + f"""
 fe_{str(counter)} = FiniteElement('Lagrange', {mesh}.ufl_cell(), {value["order"] if "order" in value else 1})
-"""
+""" 
+        elif (value["dim"] == "vector" or value["dim"] == Dimensions.vector):
+            elements = elements + f"""
+fe_{str(counter)} = VectorElement('Lagrange', {mesh}.ufl_cell(), {value["order"] if "order" in value else 1})
+""" 
         elements_string = elements_string + f"fe_{str(counter)}"
         elements_string = elements_string + ", " if counter < len(variables.items()) else elements_string
         counter = counter + 1
@@ -124,9 +129,9 @@ mixed_elem = fe_1
     counter = 1
     for key, value in variables.items():
         if len(variables.items()) > 1:
-            space_name = value["spaceName"] if "spaceName" in value else f"V_{counter}"
+            sub_space_name = value["spaceName"] if "spaceName" in value else f"V_{counter}"
             function_spaces = function_spaces + f"""
-{space_name} = {space_name}.sub({counter-1})
+{sub_space_name} = {space_name}.sub({counter-1})
 """
 
     trial_functions = ""
@@ -153,6 +158,7 @@ mixed_elem = fe_1
     L_decl = f"""
 L = {rhs}
 """
+    L_decl = "L = (dot(f, u_vec_test)) * dx"
     a_decl = f"""
 a = {lhs}
 """

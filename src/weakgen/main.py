@@ -71,12 +71,21 @@ def stokes_eq():
     a_generated_string, L_generated_string = weak_form_object.solve()
 
 def stokes_eq2():
+    from petsc4py.PETSc import ScalarType
+    from dolfinx import fem
+    from mpi4py import MPI
+    from dolfinx import mesh
+    mymesh = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8)
+    phi = 2
+    f = fem.Constant(mymesh, ScalarType((0,0)))
+
+    #f = fem.Constant(mymesh, [1,1,1])
     stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
 
-    weak_form_object = Weak_form(functions={"u_vec": {"order": 2, "dim": "vector"}, "p": {"order": 2, "dim": "scalar"}}, mesh="mymesh", string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+    weak_form_object = Weak_form(functions={"u_vec": {"order": 1, "dim": "vector"}, "p": {"order": 1, "dim": "scalar"}}, mesh="mymesh", string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
 
     a_generated_string, L_generated_string, c = weak_form_object.solve()
-
+    exec(c)
 
 def lin_elas(): 
     lin_el = "-div(sigma) = f"
