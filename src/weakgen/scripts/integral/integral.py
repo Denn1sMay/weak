@@ -61,10 +61,7 @@ class Integral:
             self.term = self.term.subs(replaced_expr, new_expr)
             return
         '''
-        print("MULTIPLICATION")
-        print(self.term)
-        print(self.dim)
-        if self.dim == Dimensions.skalar:
+        if self.dim == Dimensions.scalar:
             print("SKALAR")
             if self.test == None:
                 raise Exception("Need to provide string literal for skalar valued test function in order to create inner product")
@@ -102,6 +99,7 @@ class Integral:
 
         if(self.is_nonlinear):
             return
+        
         if self.term.has(div) and not self.term.has(grad):
             self.check_linearity(div)
             if self.term.has(Laplacian):
@@ -155,7 +153,6 @@ class Integral:
         new_expression = None
         if is_test_inner_product(integral_args, self.test_vector):
             test_gradient = grad(self.test_vector)
-            print("_____---__---_--_--_-__-_-_-")
             replaced_expression, inner_args = get_inner(integral_args)
             arg_with_trial, arg_with_test_vector =  get_sorted_inner_args(integral_args, self.test_vector)
             inner_func = inner(args_with_trial, grad(arg_with_test_vector))
@@ -215,11 +212,11 @@ class Integral:
         # Define the gradient of the trial function (argument of the laplace function) -> will be vector valued or skalar valued, depending on the use of u or u_vec as Laplacian argument
         trial_gradient = grad(args_with_trial)
         integrated_parts = None
-        if self.dim != Dimensions.skalar and self.dim != Dimensions.vector:
+        if self.dim != Dimensions.scalar and self.dim != Dimensions.vector:
             raise Exception("Cannot perform integration by parts on laplacian function - dimension unknown")
        
         # TODO inner products have to be handeled different
-        if contains_function_on_surface(inner, self.term):
+        if contains_function_on_surface(inner, integral_args):
             # Function look like: inner(Laplacian(u_vec), v-vec) -> Laplacian(u_vec) results in Vector
 
             existing_inner, inner_args = get_inner(integral_args)
@@ -230,17 +227,20 @@ class Integral:
             for arg in inner_args:
                 if arg.has(Laplacian):
                     arg_with_laplace = arg
-                else:
-                    new_args.append(arg)
+                    new_args.append(arg_with_laplace.subs(laplacian_function, trial_gradient))
 
-            test_gradient = grad(self.test_vector)
+                else:
+                    new_args.append(grad(self.test_vector))
+
             #  replace the inner product of inner(Laplacian(u_vec), v_vec)
-            inner_func = inner(trial_gradient, test_gradient)
+            inner_func = inner(new_args[0], new_args[1])
             integral_over_domain = integral_args.subs(existing_inner, inner_func)
             integrated_parts = sympy.Integral(-integral_over_domain, domain)
 
-        if self.dim == Dimensions.skalar:
+        elif self.dim == Dimensions.scalar:
             # Function look like: Laplacian(u) * v -> Laplacian(u) results in skalar
+            print(self)
+            print(self.test)
             test_gradient = grad(self.test)
             #  replace the multiplication of laplace(u) * v
             laplacian_test_mult = laplacian_function * self.test

@@ -3,12 +3,15 @@ import sympy
 from .scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from .scripts.preprocessing.preprocessing import parse_string_equation
 from .scripts.integral.integral import Integral
-from .util.util import execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
+from .util.util import get_executable_string, get_sympy_symbols, execute_test_multiplications, execute_integration, execute_integration_by_parts, execute_ufl_conversion, sort_terms
 
 
 
 class Weak_form:
-    def __init__(self, trial_function_names: Optional[List[str]] = None, 
+    def __init__(self, 
+                 functions: dict,
+                 mesh,
+                 trial_function_names: Optional[List[str]] = None, 
                  test_function_names: Optional[List[str]] = None, 
                  vector_trial_fuction_names: Optional[List[str]] = None, 
                  vector_test_function_names: Optional[List[str]] = None, 
@@ -66,11 +69,19 @@ class Weak_form:
         The two resulting string values represent the left-hand side (LHS) and the right-hand side (RHS) of the weak form equation. You can use the built-in eval() function in Python to parse the string equation into the variables present in your program's scope.
 
         '''
-        self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else []
-        self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else []
-        self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else []
-        self.trial_tensor = [sympy.Symbol(ttr) for ttr in tensor_trial_function_names] if tensor_trial_function_names != None else []
-        self.test_vector = [sympy.Symbol(vte) for vte in vector_test_function_names] if vector_test_function_names != None else []
+        self.functions = functions
+        self.trial, self.trial_vector, self.trial_tensor, self.test, self.test_vector, self.skalar_dict, self.vector_dict, self.tensor_dict = get_sympy_symbols(functions)
+        self.mesh = mesh
+        print(self.trial)
+        print(self.trial_vector)
+        print("TEST:")
+        print(self.test)
+        print(self.test_vector)
+        #self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else []
+        #self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else []
+        #self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else []
+        #self.trial_tensor = [sympy.Symbol(ttr) for ttr in tensor_trial_function_names] if tensor_trial_function_names != None else []
+        #self.test_vector = [sympy.Symbol(vte) for vte in vector_test_function_names] if vector_test_function_names != None else []
         self.variables = [sympy.Symbol(va) for va in variables] if variables != None else []
         self.variable_vectors = [sympy.Symbol(va) for va in variable_vectors] if variable_vectors != None else []
         self.boundary_func = boundary_function
@@ -93,9 +104,10 @@ class Weak_form:
         self.convert_to_ufl_string()
         self.debug_print("Weak Form Solution:", "heading")
         self.debug_print("", "sympyPprint")
+        commands = get_executable_string(self.functions, self.mesh, self.lhs_ufl_string, self.rhs_ufl_string)
         print("UFL formatted weak form:")
         print(str(self.lhs_ufl_string) + " = " + str(self.rhs_ufl_string))
-        return self.lhs_ufl_string, self.rhs_ufl_string
+        return self.lhs_ufl_string, self.rhs_ufl_string, commands
 
     def make_sorted_terms(self):
         '''

@@ -5,6 +5,10 @@ from .scripts.integral.integral import Integral
 from .weak_form import Weak_form
 from typing import Optional
 
+
+
+from mpi4py import MPI
+from dolfinx import mesh
 '''
 from dolfinx import mesh, io, plot
 from dolfinx.fem import (Constant, Function, FunctionSpace, VectorFunctionSpace,
@@ -66,6 +70,13 @@ def stokes_eq():
 
     a_generated_string, L_generated_string = weak_form_object.solve()
 
+def stokes_eq2():
+    stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
+
+    weak_form_object = Weak_form(functions={"u_vec": {"order": 2, "dim": "vector"}, "p": {"order": 2, "dim": "scalar"}}, mesh=mesh, string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+
+    a_generated_string, L_generated_string, c = weak_form_object.solve()
+
 
 def lin_elas(): 
     lin_el = "-div(sigma) = f"
@@ -73,12 +84,42 @@ def lin_elas():
     a_generated_string, L_generated_string = weak_form_object.solve()
 
 def rand():
-    rand = "grad(p) * m = f"
+    rand = "grad(p) = f"
+    myMesh = mesh.create_unit_square(MPI.COMM_WORLD, 10, 10)
 
-    weak_form_object = Weak_form(trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=rand, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+    weak_form_object = Weak_form(functions={"p": {"order": 1, "dim": "skalar"}, "m": {"order": 1, "dim": "vector"}}, mesh="myMesh", trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=rand, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
+
+    a_generated_string, L_generated_string, commands = weak_form_object.solve()
+
+
+    exec(commands, globals(), locals())
+
+
+
+def skalarproduct():
+    skalProd = "inner(grad(p), var_vec) = f"
+
+    weak_form_object = Weak_form(trial_function_names=["p"], vector_trial_fuction_names=["u_vec"], test_function_names=["v"], vector_test_function_names=["m_vec"], variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=skalProd, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions)
 
     a_generated_string, L_generated_string = weak_form_object.solve()
 
-rand()
-#stokes_eq()
+
+u_vec_dict = {
+    "u": {
+        "order": 1,
+        "dim": "vector"
+    }
+}
+p_dict = {
+    "p": {
+        "order": 1,
+        "dim": "scalar"
+    }
+}
+
+u_vec_dict.update(p_dict)
+
+#skalarproduct()
+stokes_eq2()
 #lin_elas()
+#rand()
