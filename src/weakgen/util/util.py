@@ -2,7 +2,44 @@ import sympy
 from typing import Optional, List
 from ..scripts.integral.integral import Integral
 from ..scripts.integral.util.boundaries.boundaries import Boundaries
+from ..scripts.integral.util.dimensions.dimensions import Dimensions
 from typing import Literal
+from dolfinx import mesh
+
+def verify_dict(variables: dict):
+    for key, value in variables.items():
+        if "dim" in value:
+            if value["dim"] != "scalar" and value["dim"] != "vector" and value["dim"] != "matrix" and value["dim"] != "tensor" and value["dim"] != Dimensions.scalar and value["dim"] != Dimensions.vector and value["dim"] != Dimensions.matrix:
+                raise Exception(f"Invalid 'dim' type in function '{key}' - please provide 'scalar', 'vector' or 'tensor'.")
+        else:
+            raise Exception(f"No 'dim' key found in function '{key}' - please provide a dimension.")
+
+def get_sympy_symbols(variables: dict):
+    scalar_dicts = {}
+    vector_dicts = {}
+    tensor_dicts = {}
+    scalar_function_symbols = []
+    vector_function_symbols = []
+    tensor_function_symbols = []
+    scalar_test_function_symbols = []
+    vector_test_function_symbols = []
+    for key, value in variables.items():
+        print(value)
+        if (value.get("dim") == "scalar" or value.get("dim") == Dimensions.scalar):
+            scalar_dicts.update({key: value})
+            scalar_function_symbols.append(sympy.Symbol(key))
+            scalar_test_function_symbols.append(sympy.Symbol(key + "_test"))
+
+        if (value.get("dim") == "vector" or value.get("dim") == Dimensions.vector):
+            vector_dicts.update({key: value})
+            vector_function_symbols.append(sympy.Symbol(key))
+            vector_test_function_symbols.append(sympy.Symbol(key + "_test"))
+
+        if (value.get("dim") == "tensor" or value.get("dim") == "matrix" or value.get("dim") == Dimensions.matrix):
+            tensor_dicts.update({key: value})
+            tensor_function_symbols.append(sympy.Symbol(key))
+
+    return scalar_function_symbols, vector_function_symbols, tensor_function_symbols, scalar_test_function_symbols, vector_test_function_symbols, scalar_dicts, vector_dicts, tensor_dicts
 
 _side_types = ["lhs", "rhs"]
 def sort_terms(terms: List[sympy.Expr], side: _side_types, trial: Optional[List[sympy.Symbol]] = None, test: Optional[List[sympy.Symbol]] = None, trial_vector: Optional[List[sympy.Symbol]] = None, test_vector: Optional[List[sympy.Symbol]] = None, trial_tensor: Optional[List[sympy.Symbol]] = None, variables: Optional[List[sympy.Symbol]] = None, variable_vectors: Optional[List[sympy.Symbol]] = None,  boundary: Optional[Boundaries] = None, boundary_func: Optional[sympy.Symbol] = None, debug: Optional[bool] = True):
@@ -47,3 +84,85 @@ def execute_ufl_conversion(terms: List[Integral]):
     for index, term in enumerate(terms):
         converted_to_ufl = converted_to_ufl + ("" if index == 0 else " + ") + term.convert_integral_to_ufl_string()
     return converted_to_ufl
+
+
+def get_executable_string(variables: dict, mesh, lhs, rhs):
+    imports = """
+from ufl import FiniteElement, VectorElement, MixedElement, TestFunctions, TrialFunctions, TrialFunction, TestFunction, inner, dot, grad, div, curl, div, ds, dx
+from dolfinx.fem import FunctionSpace
+from mpi4py import MPI
+from dolfinx import mesh
+    """
+
+    space_name = "V"
+    if len(variables.items()) == 1:
+        for key, values in variables.items():
+            space_name = values["spaceName"] if "spaceName" in values else space_name
+
+    elements = ""
+    counter = 1
+    elements_string = ""
+    for key, value in variables.items():
+        if (value["dim"] == "scalar" or value["dim"] == Dimensions.scalar):
+            elements = elements + f"""
+fe_{str(counter)} = FiniteElement('Lagrange', {mesh}.ufl_cell(), {value["order"] if "order" in value else 1})
+""" 
+        elif (value["dim"] == "vector" or value["dim"] == Dimensions.vector):
+            elements = elements + f"""
+fe_{str(counter)} = VectorElement('Lagrange', {mesh}.ufl_cell(), {value["order"] if "order" in value else 1})
+""" 
+        elements_string = elements_string + f"fe_{str(counter)}"
+        elements_string = elements_string + ", " if counter < len(variables.items()) else elements_string
+        counter = counter + 1
+
+
+    mixed_element = f"""
+mixed_elem = MixedElement({elements_string})
+""" if counter > 2 else f"""
+mixed_elem = fe_1
+"""
+
+    function_space = f"""
+{space_name} = FunctionSpace({mesh}, mixed_elem)
+"""
+    function_spaces = ""
+    counter = 1
+    for key, value in variables.items():
+        if len(variables.items()) > 1:
+            sub_space_name = value["spaceName"] if "spaceName" in value else f"V_{counter}"
+            function_spaces = function_spaces + f"""
+{sub_space_name} = {space_name}.sub({counter-1})
+"""
+
+    trial_functions = ""
+    test_functions = ""
+    counter = 1
+    for key, value in variables.items():
+        trial_functions = trial_functions + key
+        trial_functions = trial_functions + ", " if counter < len(variables.items()) else trial_functions
+
+        test_functions = test_functions + key + "_test"
+        test_functions = test_functions + ", " if counter < len(variables.items()) else test_functions
+        counter = counter + 1
+
+    function_decl = f"""
+{trial_functions} = TrialFunctions({space_name})
+""" if counter > 2 else f"""
+{trial_functions} = TrialFunction({space_name})
+"""
+    test_function_decl = f"""
+{test_functions} = TestFunctions({space_name})
+""" if counter > 2 else f"""
+{test_functions} = TestFunction({space_name})
+"""
+    L_decl = f"""
+L = {rhs}
+"""
+    a_decl = f"""
+a = {lhs}
+"""
+
+    concated = imports + elements + mixed_element + function_space + function_spaces + function_decl + test_function_decl + a_decl + L_decl
+    print(concated)
+    return concated
+

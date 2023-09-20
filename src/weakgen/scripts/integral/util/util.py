@@ -61,6 +61,7 @@ Will apply rules on how the dimensions are shifted by using nabla operator.
 The 'expand()' operator is used on the expression -> only summands should be present in typed_expressions
 '''
 def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], trial_tensor: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
+    print()
     debug_print(debug, "#### New Level of dimension resolution ####", expression)
     typed_expressions = get_expression_types(expression.expand())
     dimension = 0
@@ -207,7 +208,7 @@ def get_dimension_type(expression: sympy.Expr, trial: List[sympy.Symbol] = [], t
     if integral_dimension == None:
         return integral_dimension
     if integral_dimension == 0:
-        return Dimensions.skalar
+        return Dimensions.scalar
 
     if integral_dimension == 1:
         return Dimensions.vector
@@ -251,7 +252,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbo
 
     if sympy_term.has(div) and not sympy_term.has(grad) and not sympy_term.has(inner) and not sympy_term.has(Laplacian):
         debug_print(debug, "Summand contains a divergence -> skalar valued", sympy_term, "sympyPprint")
-        summand_dimension = Dimensions.skalar
+        summand_dimension = Dimensions.scalar
         div_atoms = sympy_term.atoms(div)
         verify_vector_args(min(div_atoms), trial, trial_vector, test, test_vector)
         if len(div_atoms) > 1:
@@ -268,7 +269,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbo
 
     if sympy_term.has(grad) and sympy_term.has(inner) and not sympy_term.has(div) and not sympy_term.has(Laplacian):
         debug_print(debug, "Summand contains a inner product -> skalar valued:", sympy_term, "sympyPprint")
-        summand_dimension = Dimensions.skalar
+        summand_dimension = Dimensions.scalar
         inner_atoms = sympy_term.atoms(inner)
         inner_atom = min(inner_atoms)
         # inner product can look like inner(grad(u), grad(v)) -> Skalar or inner(grad(u_vec), grad(v_vec)) -> Skalar
@@ -313,7 +314,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbo
         laplacian_arg = laplacian_atom.args[0]
         if trial != None and laplacian_arg.has(*trial):
             debug_print(debug, "Summand contains Laplacian(u_skalar) -> skalar valued:", sympy_term, "sympyPprint")
-            summand_dimension = Dimensions.skalar
+            summand_dimension = Dimensions.scalar
         elif trial_vector != None and laplacian_arg.has(*trial_vector):
             debug_print(debug, "Summand contains Laplacian(u_vector) -> vector valued:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.vector
@@ -323,7 +324,7 @@ def calculate_dimension(sympy_term: sympy.Expr, trial: Optional[List[sympy.Symbo
     if not sympy_term.has(Laplacian) and not sympy_term.has(div) and not sympy_term.has(grad)  and not sympy_term.has(curl):
         if (test != None and sympy_term.has(*trial)) or (test != None and sympy_term.has(*test)):
             debug_print(debug, "Summand contains no differential operator -> default skalar dimension:", sympy_term, "sympyPprint")
-            summand_dimension = Dimensions.skalar
+            summand_dimension = Dimensions.scalar
         elif (trial_vector != None and sympy_term.has(*trial_vector)) or (test_vector != None and sympy_term.has(*test_vector)):
             debug_print(debug, "Summand contains no differential operator -> default vector dimension:", sympy_term, "sympyPprint")
             summand_dimension = Dimensions.vector
@@ -342,13 +343,13 @@ def multiply(terms: list):
     return multiplied_terms
 
 def contains_function_on_surface(function: sympy.Function, term: sympy.Expr):
-    contains_inner = False
     if term.func == sympy.Mul or term.func == sympy.Add:
         cotaining_inner = []
         for arg in term.args:
             cotaining_inner.append(contains_function_on_surface(function, arg))
+            print(cotaining_inner)
         return not all(item == False for item in cotaining_inner)
-
+    
     if term.func == function:
         return True
     else:
