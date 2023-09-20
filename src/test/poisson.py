@@ -1,6 +1,5 @@
 from mpi4py import MPI
 from dolfinx import mesh
-domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilateral)
 
 from dolfinx.fem import FunctionSpace
 
@@ -8,6 +7,7 @@ from ..weakgen.weak_form import Weak_form
 from ..weakgen.scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from petsc4py.PETSc import ScalarType
 from dolfinx import fem
+domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilateral)
 
 f = fem.Constant(domain, ScalarType(-6))
 u_dict = {
