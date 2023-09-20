@@ -15,6 +15,7 @@ ___
 
 ```python
 from weakgen import Weak_form
+domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilateral)
 
 u_dict = {
     "u": {
@@ -69,7 +70,11 @@ variables = {
     }
 }
 ```
-You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. Optionally, you can pass the desired name of Function for each variable. All Functions and Functionspaces will be initialized by calling the "exec()"-Function with the "commands"-variable, which is returned by the "solve"- method of your Weak_form-object.
+You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. Optionally, you can pass the desired name of the Functionspace for each variable. 
+
+Pass the variable name of your defined mesh to the "mesh"-parameter.
+
+All Functions and Functionspaces will be initialized by calling the "exec()"-Function with the "commands"-variable, which is returned by the "solve"- method of your Weak_form-object.
 
 The name of the (mixed) function space defaults to "V", if not specified otherwise. Sub function spaces will be accessible with "V_1", "V_2",... if not specified otherwise.
 The testfunctions will be named like the unknown function with the postfix "_test". The example would produce "u_test" and "p_test".
