@@ -1,8 +1,8 @@
 import sympy
-from .scripts.integral.util.operators.operators import div, grad, curl
-from .scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
-from .scripts.integral.integral import Integral
-from .weak_form import Weak_form
+from ..weakgen.scripts.integral.util.operators.operators import div, grad, curl
+from ..weakgen.scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
+from ..weakgen.scripts.integral.integral import Integral
+from ..weakgen.weak_form import Weak_form
 from typing import Optional
 
 

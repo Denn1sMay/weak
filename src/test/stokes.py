@@ -11,7 +11,7 @@ from dolfinx.plot import create_vtk_mesh
 from ufl import (FacetNormal, FiniteElement, Identity,TestFunction, TrialFunction, VectorElement,
                  div, dot, ds, dx, inner, lhs, nabla_grad, rhs, sym)
 
-from .weak_form import Weak_form
+from ..weakgen import Weak_form
 
 mesh = create_unit_square(MPI.COMM_WORLD, 10, 10)
 t = 0

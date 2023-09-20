@@ -158,7 +158,6 @@ mixed_elem = fe_1
     L_decl = f"""
 L = {rhs}
 """
-    L_decl = "L = (dot(f, u_vec_test)) * dx"
     a_decl = f"""
 a = {lhs}
 """

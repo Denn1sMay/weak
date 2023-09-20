@@ -1,4 +1,8 @@
 
+from ..weakgen import Weak_form
+
+
+
 mydict = {
     "u": {
         "order": 2,

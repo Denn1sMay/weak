@@ -4,13 +4,13 @@ domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilater
 
 from dolfinx.fem import FunctionSpace
 
-from .weak_form import Weak_form
-from .scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
+from ..weakgen.weak_form import Weak_form
+from ..weakgen.scripts.integral.util.boundaries.boundaries import Boundaries, BoundaryFunctions
 from petsc4py.PETSc import ScalarType
 from dolfinx import fem
 
 f = fem.Constant(domain, ScalarType(-6))
-
+phi = 3
 u_dict = {
     "u": {
         "order": 1,
@@ -18,7 +18,7 @@ u_dict = {
         "spaceName": "Myspace"
     }
 }
-pde = "Laplacian(u) = f"
+pde = "phi * Laplacian(u) = f"
 
 weak_form_object = Weak_form(functions=u_dict, mesh="domain", string_equation=pde, boundary_condition=Boundaries.dirichlet)
 
