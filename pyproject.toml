@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "weakgen"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
   { name="Dennis Mayer", email="d.mayer97@web.de" },
 ]

@@ -14,7 +14,11 @@ ___
 ## Example Usage
 
 ```python
-from weakgen import Weak_form
+from mpi4py import MPI
+from dolfinx import mesh, fem
+
+from weakgen import Weak_form, Boundaries
+
 domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilateral)
 
 u_dict = {
@@ -70,11 +74,14 @@ variables = {
     }
 }
 ```
-You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. Optionally, you can pass the desired name of the Functionspace for each variable. 
+You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. The "dim" "matrix" corresponds to a helper dimension. It is assumed that you apply a function to a defined TrialFunction, which results in a matrix. The matrix-varialbe will not be initializes inside the "commands"-script!
+Optionally, you can pass the desired name of the Functionspace for each variable. 
 
 Pass the variable name of your defined mesh to the "mesh"-parameter.
 
 All Functions and Functionspaces will be initialized by calling the "exec()"-Function with the "commands"-variable, which is returned by the "solve"- method of your Weak_form-object.
+
+If you want to initilize all functions and spaces on your own, you can use pythons "eval()"-function on the received "a_generated_string" and "L_generated_string"-variables.
 
 The name of the (mixed) function space defaults to "V", if not specified otherwise. Sub function spaces will be accessible with "V_1", "V_2",... if not specified otherwise.
 The testfunctions will be named like the unknown function with the postfix "_test". The example would produce "u_test" and "p_test".
