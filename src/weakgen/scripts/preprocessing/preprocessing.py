@@ -63,8 +63,5 @@ def parse_string_equation(string_equation: str):
     expanded_lhs = expand_with_operators(lhs_with_operators)
     expanded_rhs = expand_with_operators(rhs_with_operators)
     parsed_equation = sympy.Eq(expanded_lhs, expanded_rhs)
-    print("Parsed sympy equation")
-    sympy.pprint(parsed_equation)
-    print("")
     return parsed_equation
 

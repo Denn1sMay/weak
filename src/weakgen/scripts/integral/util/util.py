@@ -61,7 +61,7 @@ Will apply rules on how the dimensions are shifted by using nabla operator.
 The 'expand()' operator is used on the expression -> only summands should be present in typed_expressions
 '''
 def get_dimension(expression: sympy.Expr, trial: List[sympy.Symbol] = [], trial_vector: List[sympy.Symbol] = [], test: List[sympy.Symbol] = [], test_vector: List[sympy.Symbol] = [], trial_tensor: List[sympy.Symbol] = [], variables: List[sympy.Symbol] = [], variable_vectors: List[sympy.Symbol] = [], currentDimension: Optional[int] = None, debug: Optional[bool] = False):
-    print()
+    debug_print(debug, "")
     debug_print(debug, "#### New Level of dimension resolution ####", expression)
     typed_expressions = get_expression_types(expression.expand())
     dimension = 0

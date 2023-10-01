@@ -17,27 +17,90 @@ class Weak_form:
                  variable_vectors: Optional[List[str]] = None, 
                  boundary_condition: Optional[Boundaries] = Boundaries.dirichlet, 
                  boundary_function: Optional[dict[str,str]] = None, 
-                 debug: Optional[bool] = True):
+                 debug: Optional[bool] = False):
         '''
         See [GitHub](https://github.com/Denn1sMay/weak) for further Details 
         ## Example Usage
 
+        ```python
+        from mpi4py import MPI
+        from dolfinx import mesh, fem
+
+        from weakgen import Weak_form, Boundaries
+
+        domain = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8, mesh.CellType.quadrilateral)
+
+        u_dict = {
+            "u": {
+                "order": 1,
+                "dim": "scalar",
+                "spaceName": "Myspace"
+            }
+        }
+        f = fem.Constant(domain, ScalarType(-6))
+        pde = "Laplacian(u) = f"
+
+        weak_form_object = Weak_form(functions=u_dict, mesh="domain", string_equation=pde, boundary_condition=Boundaries.dirichlet)
+
+        # lhs and rhs of equation as strings
+        # commands contains a python-executable script
+        a_generated_string, L_generated_string, commands = weak_form_object.solve()
+        # Declares Finite Elements and FunctionSpaces, TrialFunctions and Testfunctions
+        # Declares lhs of the Equation as "a" and rhs as "L"
+        exec(commands)
+
+        # After defining your Boundary conditions "bc"
+        # The variables a and L can be used like that:
+
+        problem = fem.petsc.LinearProblem(a, L, bcs=[bc])
+        uh = problem.solve()
         ```
-        from weakgen import Weak_form
-        from ufl import inner, grad, div, curl, div, ds, dx
-        
-        weak_form_object = Weak_form(trial_function_names=["u"], test_function_names=["v"], string_equation="Laplacian(u) = f")
-        weak_form_lhs_string, weak_form_rhs_string = weak_form_object.solve()
-        # Result:
-        # weak_form_lhs_string: (-inner(grad(u), grad(v))) * dx
-        # weak_form_rhs_string: (f*v) * dx        a_as_dolfin_expr = eval(weak_form_lhs_string)
-        L_as_dolfin_expr = eval(weak_form_rhs_string)
+
+        ___
+
+        ### Input
+        To use the package, provide the strong form of the equation as a string to the `equation_string` parameter. The equation can be scalar- or vector-valued, as it will be converted to a scalar weak form.
+        You also need to provide the unknown functions of your equation. Define them as a dict like:
+        ```python
+        {dict_name} = {
+            "{variable_name}": {
+                "order": {number},
+                "dim": {"scalar" | "vector" | "matrix"},
+                "spaceName": {optional: string}
+            }
+        }
+
+        # Example:
+        variables = {
+            "u": {
+                "order": 2,
+                "dim": "vector",
+            },
+            "p": {
+                "order": 1,
+                "dim": "scalar",
+                "spaceName": "my_functionspace_name"
+            }
+        }
         ```
+        You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. The "dim" "matrix" corresponds to a helper dimension. It is assumed that you apply a function to a defined TrialFunction, which results in a matrix. The matrix-varialbe will not be initializes inside the "commands"-script!
+        Optionally, you can pass the desired name of the Functionspace for each variable. 
 
-        The ufl operators have to be imported as in the example. Otherwise the eval() function wont be able to map the string functions to the ufl-implementation of the functions.
+        Pass the variable name of your defined mesh to the "mesh"-parameter.
 
+        All Functions and Functionspaces will be initialized by calling the "exec()"-Function with the "commands"-variable, which is returned by the "solve"- method of your Weak_form-object.
 
+        If you want to initilize all functions and spaces on your own, you can use pythons "eval()"-function on the received "a_generated_string" and "L_generated_string"-variables.
+
+        The name of the (mixed) function space defaults to "V", if not specified otherwise. Sub function spaces will be accessible with "V_1", "V_2",... if not specified otherwise.
+        The testfunctions will be named like the unknown function with the postfix "_test". The example would produce "u_test" and "p_test".
+
+        If you encounter any difficulties during the conversion process, you can set the `debug=True` parameter to receive hints on where the conversion failed.
+        ___
         ### Accessible differential operators
+
+        The package supports the following differential operators:
+
         - Laplacian (take the laplacian of an expression)
         - grad (take the gradient of an expression)
         - div (take the divergence of an expression)
@@ -47,11 +110,13 @@ class Weak_form:
         You can specify a boundary condition by passing a condition to the `boundary_condition` parameter. If you need a Neumann boundary condition, you must provide a string literal for the `boundary_function` parameter. The available options are:
         - Boundaries.dirichlet (default): Surface integrals will vanish.
         - Boundaries.neumann: Requires the `boundary_function` parameter. Applies a Neumann boundary condition.
-       
-        ### Input
-        To use the package, provide the strong form of the equation as a string to the `equation_string` parameter. The equation can be scalar- or vector-valued, as it will be converted to a scalar weak form.
-        You also need to provide the string literals of the trial function(s) in a list to the `trial_function_names` or `vector_trial_function_names` parameter, depending on their dimension. Similarly, provide the string literals of the test function(s) defined in your program's scope to the `test_function_names` or `vector_test_function_names` parameter, based on the dimension of your equation.
-        If you encounter any difficulties during the conversion process, you can set the `debug=True` parameter to receive hints on where the conversion failed.
+
+        ___
+
+        ### Troubleshooting
+        If you encounter errors, try to pass the names of constant variables to the "variables" or "variable_vectors"-parameter, respectively. This will help to determine the dimension of single expressions.
+
+        ___
 
         ### What does it do
         The Weak Form Equation Generator attempts to parse your string equation into a sympy equation and separate its terms. When you call solve() on the returned object, the following steps will be executed:
@@ -63,15 +128,14 @@ class Weak_form:
 
         The two resulting string values represent the left-hand side (LHS) and the right-hand side (RHS) of the weak form equation. You can use the built-in eval() function in Python to parse the string equation into the variables present in your program's scope.
 
+
+
+        [GitHub](https://github.com/Denn1sMay/weak)
+
         '''
         self.functions = functions
         self.trial, self.trial_vector, self.trial_tensor, self.test, self.test_vector, self.skalar_dict, self.vector_dict, self.tensor_dict = get_sympy_symbols(functions)
         self.mesh = mesh
-        print(self.trial)
-        print(self.trial_vector)
-        print("TEST:")
-        print(self.test)
-        print(self.test_vector)
         #self.trial = [sympy.Symbol(tr) for tr in trial_function_names] if trial_function_names != None else []
         #self.test = [sympy.Symbol(te) for te in test_function_names] if test_function_names != None else []
         #self.trial_vector = [sympy.Symbol(vtr) for vtr in vector_trial_fuction_names] if vector_trial_fuction_names != None else []
@@ -89,7 +153,7 @@ class Weak_form:
 
         self.make_sorted_terms()
         self.assume_dimensions()
-        #self.verify_dimensions()
+        self.verify_dimensions()
 
 
     def solve(self):
@@ -97,11 +161,16 @@ class Weak_form:
         self.integrate_over_domain()
         self.integraty_by_parts()
         self.convert_to_ufl_string()
+        commands = get_executable_string(self.functions, self.mesh, self.lhs_ufl_string, self.rhs_ufl_string)
+        final_string_eq = str(self.lhs_ufl_string) + " = " + str(self.rhs_ufl_string)
+        if(self.debug):
+            print("Executable:")
+            print(commands)
         self.debug_print("Weak Form Solution:", "heading")
         self.debug_print("", "sympyPprint")
-        commands = get_executable_string(self.functions, self.mesh, self.lhs_ufl_string, self.rhs_ufl_string)
         print("UFL formatted weak form:")
-        print(str(self.lhs_ufl_string) + " = " + str(self.rhs_ufl_string))
+        print(final_string_eq)
+        print("_" * len(final_string_eq))
         return self.lhs_ufl_string, self.rhs_ufl_string, commands
 
     def make_sorted_terms(self):

@@ -24,20 +24,25 @@ def get_sympy_symbols(variables: dict):
     scalar_test_function_symbols = []
     vector_test_function_symbols = []
     for key, value in variables.items():
-        print(value)
+        if value.get("dim") == "skalar":
+            raise Exception("Please use 'scalar' instead of 'sklalar' in your dimension deklaration")
         if (value.get("dim") == "scalar" or value.get("dim") == Dimensions.scalar):
             scalar_dicts.update({key: value})
             scalar_function_symbols.append(sympy.Symbol(key))
             scalar_test_function_symbols.append(sympy.Symbol(key + "_test"))
 
-        if (value.get("dim") == "vector" or value.get("dim") == Dimensions.vector):
+        elif (value.get("dim") == "vector" or value.get("dim") == Dimensions.vector):
             vector_dicts.update({key: value})
             vector_function_symbols.append(sympy.Symbol(key))
             vector_test_function_symbols.append(sympy.Symbol(key + "_test"))
 
-        if (value.get("dim") == "tensor" or value.get("dim") == "matrix" or value.get("dim") == Dimensions.matrix):
+        elif (value.get("dim") == "tensor" or value.get("dim") == "matrix" or value.get("dim") == Dimensions.matrix):
             tensor_dicts.update({key: value})
             tensor_function_symbols.append(sympy.Symbol(key))
+        else:
+            print("Could not determine dimension of "+ key)
+            print("Please use 'dim': 'scalar' | 'vector' | 'matrix'")
+            raise Exception("No dimension for function " + key + " provided. Specify its dimension by inserting 'dim': 'scalar' | 'vector' | 'matrix'")
 
     return scalar_function_symbols, vector_function_symbols, tensor_function_symbols, scalar_test_function_symbols, vector_test_function_symbols, scalar_dicts, vector_dicts, tensor_dicts
 
@@ -163,6 +168,5 @@ a = {lhs}
 """
 
     concated = imports + elements + mixed_element + function_space + function_spaces + function_decl + test_function_decl + a_decl + L_decl
-    print(concated)
     return concated
 
