@@ -8,14 +8,18 @@ from mpi4py import MPI
 from dolfinx import mesh
 
 
-boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
 from petsc4py.PETSc import ScalarType
 from dolfinx import fem
 from mpi4py import MPI
 from dolfinx import mesh
+
+boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
 mymesh = mesh.create_unit_square(MPI.COMM_WORLD, 8, 8)
 
-
+g_curl = fem.Constant(mymesh, ScalarType((0,0)))
+g_grad = fem.Constant(mymesh, ScalarType((0,0)))
+g_div = 0
+g_lap = 0
 def stokes_eq2():
     phi = 2
     f = fem.Constant(mymesh, ScalarType((0,0)))
@@ -33,10 +37,10 @@ def stokes_eq2():
         }
     stokes = "-phi * Laplacian(u_vec) + div(u_vec) * u_vec + grad(p) = f"
 
-    weak_form_object = Weak_form(functions=vars, mesh="mymesh", string_equation=stokes, boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions)
+    weak_form_object = Weak_form(functions=vars, mesh="mymesh", string_equation=stokes, boundary_condition=Boundaries.dirichlet, boundary_function=boundaryFunctions, debug=False)
 
     a_generated_string, L_generated_string, c = weak_form_object.solve()
-    #exec(c)
+    #exec(c, globals(), locals())
 
 def lin_elas(): 
     vars = {
@@ -89,7 +93,7 @@ def skalarproduct():
 
     skalProd = "inner(grad(p), var_vec) = f"
 
-    weak_form_object = Weak_form(functions=vars, mesh=mymesh, variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=skalProd, boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions)
+    weak_form_object = Weak_form(functions=vars, mesh=mymesh, variables=["m"], variable_vectors=["var_vec", "m_vec"], string_equation=skalProd, boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions, debug=True)
 
     a_generated_string, L_generated_string, commands = weak_form_object.solve()
 
@@ -174,12 +178,45 @@ def laplace_ex():
 
     a_generated_string, L_generated_string, commands = weak_form_object.solve()
 
+def someRandomEquation():
+    vars= {
+        "u_vec": {
+            "dim": "vector",
+            "order": 1
+        },
+        "p": {
+            "dim": "scalar",
+            "order": 1
+        },
+        "m_vec": {
+            "dim": "vector",
+            "order": 2
+        }
+    }
 
-#laplace_ex()
+    pi = 3.14
+    constantVec = fem.Constant(mymesh, ScalarType((2,2)))
+
+    random_eq = "5 * grad(p) + pi + div(m_vec + constantVec) + curl(2*u_vec) = constantVec"
+
+    weak_form_object = Weak_form(functions=vars, 
+                                mesh="mymesh", 
+                                string_equation=random_eq, 
+                                boundary_condition=Boundaries.dirichlet, 
+                                boundary_function=boundaryFunctions,
+                                variables=["pi"],
+                                variable_vectors=["constantVec"],
+                                debug=False)
+    a_generated_string, L_generated_string, commands = weak_form_object.solve()
+
+
+
+someRandomEquation()
+laplace_ex()
 gradient_ex()
-#divergence_ex()
-#skalarproduct()
-#stokes_eq2()
-#lin_elas()
-#rand()
-#curlEx()
+divergence_ex()
+skalarproduct()
+stokes_eq2()
+lin_elas()
+rand()
+curlEx()

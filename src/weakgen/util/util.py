@@ -138,6 +138,7 @@ mixed_elem = fe_1
             function_spaces = function_spaces + f"""
 {sub_space_name} = {space_name}.sub({counter-1})
 """
+            counter = counter +1
 
     trial_functions = ""
     test_functions = ""

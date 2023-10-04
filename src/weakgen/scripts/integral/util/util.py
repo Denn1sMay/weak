@@ -347,7 +347,6 @@ def contains_function_on_surface(function: sympy.Function, term: sympy.Expr):
         cotaining_inner = []
         for arg in term.args:
             cotaining_inner.append(contains_function_on_surface(function, arg))
-            print(cotaining_inner)
         return not all(item == False for item in cotaining_inner)
     
     if term.func == function:

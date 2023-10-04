@@ -153,7 +153,7 @@ class Weak_form:
 
         self.make_sorted_terms()
         self.assume_dimensions()
-        self.verify_dimensions()
+        #self.verify_dimensions()
 
 
     def solve(self):
@@ -163,9 +163,9 @@ class Weak_form:
         self.convert_to_ufl_string()
         commands = get_executable_string(self.functions, self.mesh, self.lhs_ufl_string, self.rhs_ufl_string)
         final_string_eq = str(self.lhs_ufl_string) + " = " + str(self.rhs_ufl_string)
-        if(self.debug):
-            print("Executable:")
-            print(commands)
+        self.debug_print("Executable Script:", "heading")
+        self.debug_print(commands)
+        self.debug_print("End of script", "heading")
         self.debug_print("Weak Form Solution:", "heading")
         self.debug_print("", "sympyPprint")
         print("UFL formatted weak form:")

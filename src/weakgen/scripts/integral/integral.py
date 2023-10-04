@@ -71,7 +71,7 @@ class Integral:
             self.term = inner(self.term, self.test_vector)
         else:
             self.term = self.term * self.test
-        self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.variables, self.variable_vectors, debug=self.debug)
+        self.dim = get_dimension_type(self.term, self.trial, self.trial_vector, self.all_test, self.all_test_vectors, self.trial_tensor, self.variables, self.variable_vectors, debug=self.debug)
 
 
 
@@ -82,18 +82,11 @@ class Integral:
     Integration by Parts
     '''
     def integrate_by_parts(self, currentTerm: Optional[sympy.Expr] = None):
-        currentTerm = currentTerm if currentTerm is not None else self.term
 
+        if contains_function_on_surface(inner, self.term.args[0]) and self.term.args[0].has(grad):
+            # Expression looks like: inner(grad(u), m) -> cannot be transformed
+            return
 
-        if currentTerm is None and contains_function_on_surface(inner, currentTerm) and (currentTerm.has(div) or currentTerm.has(Laplacian)):
-            # Divergence/ Laplacian that returns a vector -> args of operators are matrices
-            inner_func, inner_args = get_inner(self.term)
-            new_args = []
-            for arg in inner_args:
-                if arg.has(div) or arg.has(Laplacian):
-                    print("INNER")
-                    #integrated_parts = self.integrate_by_parts(arg)
-                    #new_args.append()
 
         if(self.is_nonlinear):
             return
