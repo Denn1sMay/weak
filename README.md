@@ -28,10 +28,13 @@ u_dict = {
         "spaceName": "Myspace"
     }
 }
+
+boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
+
 f = fem.Constant(domain, ScalarType(-6))
 pde = "Laplacian(u) = f"
 
-weak_form_object = Weak_form(functions=u_dict, mesh="domain", string_equation=pde, boundary_condition=Boundaries.dirichlet)
+weak_form_object = Weak_form(functions=u_dict, mesh="domain", string_equation=pde, boundary_condition=Boundaries.neumann, boundary_function=boundaryFunctions)
 
 # lhs and rhs of equation as strings
 # commands contains a python-executable script
@@ -73,6 +76,7 @@ variables = {
         "spaceName": "my_functionspace_name"
     }
 }
+
 ```
 You have to provide the polynomial order to the "order"-key and the dimension of your function to the "dim"-key. The "dim" "matrix" corresponds to a helper dimension. It is assumed that you apply a function to a defined TrialFunction, which results in a matrix. The matrix-varialbe will not be initializes inside the "commands"-script!
 Optionally, you can pass the desired name of the Functionspace for each variable. 
@@ -102,6 +106,11 @@ You can specify a boundary condition by passing a condition to the `boundary_con
 - Boundaries.dirichlet (default): Surface integrals will vanish.
 - Boundaries.neumann: Requires the `boundary_function` parameter. Applies a Neumann boundary condition.
 
+To specify boundary functions, also use a dict with following keys - only specify required keys:
+```python
+boundaryFunctions = {"curl": "g_curl", "grad": "g_grad", "div": "g_div", "laplacian": "g_lap"}
+```
+g_curl corresponds to (n x u), g_div to (n ⋅ u), etc.
 ___
 
 ### Troubleshooting
